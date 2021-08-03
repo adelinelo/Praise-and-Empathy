@@ -1,0 +1,2684 @@
+---
+title: "Across study summarizations"
+author: "Adeline Lo"
+output: 
+  html_document: 
+    code_folding: hide
+    pandoc_args: ["--lua-filter=color-text.lua"]
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: united
+  pdf_document: 
+    pandoc_args: ["--lua-filter=color-text.lua"]
+    keep_tex: true
+header-includes:
+  - \preauthor{\centering\large}
+  - \predate{\centering\normalsize}
+  - \pretitle{\centering\Large\textbf}
+  - \usepackage{setspace}\onehalfspacing
+  - \usepackage{xcolor}
+  - \usepackage[shortlabels]{enumitem}
+  - \usepackage{pgf,tikz, mathabx}
+  - \usetikzlibrary{positioning}
+editor_options:
+  chunk_output_type: console
+---
+<style>
+
+table, td, th {
+  border: none;
+  padding-left: 1em;
+  padding-right: 1em;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+</style>
+
+```{cat, engine.opts = list(file = "color-text.lua")}
+Span = function(span)
+  color = span.attributes['color']
+  -- if no color attribute, return unchange
+  if color == nil then return span end
+  
+  -- tranform to <span style="color: red;"></span>
+  if FORMAT:match 'html' then
+    -- remove color attributes
+    span.attributes['color'] = nil
+    -- use style attribute instead
+    span.attributes['style'] = 'color: ' .. color .. ';'
+    -- return full span element
+    return span
+  elseif FORMAT:match 'latex' then
+    -- remove color attributes
+    span.attributes['color'] = nil
+    -- encapsulate in latex code
+    table.insert(
+      span.content, 1,
+      pandoc.RawInline('latex', '\\textcolor{'..color..'}{')
+    )
+    table.insert(
+      span.content,
+      pandoc.RawInline('latex', '}')
+    )
+    -- returns only span content
+    return span.content
+  else
+    -- for other format return unchanged
+    return span
+  end
+end
+```
+
+<!-- # Packages: -->
+
+```{r,eval=TRUE,message=FALSE,warning=FALSE}
+rm(list=ls())
+library(Hmisc)
+library("dplyr")
+library(gridExtra)
+library(grid)
+library("stargazer")
+library("hrbrthemes")
+#hrbrthemes::import_roboto_condensed()
+library("quanteda")
+library("readtext")
+library("tidyverse")
+library("knitr")
+library("papeR")
+library(tidyr)
+library(kableExtra)
+library(ggpubr)
+library("printr")
+library("tab")
+library("lfe")
+library(sjPlot)
+library(clusterSEs)
+library(BBmisc)
+library(miceadds)
+library(mediation)
+library(estimatr)
+#sensitivity ovb
+library(sensemakr) 
+library(SentimentAnalysis)
+
+#plots
+library(ggplot2)
+library(ggridges)
+library(viridis)
+
+source("R_fns.R")
+```
+
+
+Read in data:
+```{r call data}
+#Study 1
+data1<-readRDS(file="../Data/Survey Data/Study 1/clean_data_study1.rds")
+long_data1<-readRDS(file="../Data/Survey Data/Study 1/clean_long_data_study1.rds")
+#study 0 (paper=Study 2)
+data2<-readRDS(file="../Data/Survey Data/Study 0/clean_data2.rds")
+data2<-subset(data2,Finished==1)
+#study 2 (paper=Study 3)
+data3<-readRDS(file="../Data/Survey Data/Study 2/clean_data_study2.rds")
+long_data3<-readRDS(file="../Data/Survey Data/Study 2/clean_long_data_study2.rds")
+#study 4 (paper=Study 4)
+data4<-readRDS(file="../Data/Survey Data/Study 4/clean_data_study4.rds")
+data4 <- data4[ which(data4$treat16=="empathetic" | data4$treat16=="happiness" | data4$treat16=="objective"),]
+#study 5 and 6 (paper=Study 5)
+data5<-readRDS(file="../Data/Survey Data/Study 5/clean_data_study5.rds")
+long_data5<-readRDS(file="../Data/Survey Data/Study 5/clean_long_data_study5.rds")
+
+data6<-readRDS(file="../Data/Survey Data/Study 6/clean_data_study6.rds")
+long_data6<-readRDS(file="../Data/Survey Data/Study 6/clean_long_data_study6.rds")
+
+
+##study 5: first three trials
+long_data5_new<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3")
+long_data5_new<- long_data5_new[!is.na(long_data5_new$happy), ]
+long_data5_new<- long_data5_new[!is.na(long_data5_new$PraiseEmpathy), ]
+long_data5_new<- long_data5_new[!is.na(long_data5_new$describeORfeel), ]
+##study 6:
+long_data6_new<- long_data6[!is.na(long_data6$PraiseEmpathy), ]
+long_data6_new<- long_data6_new[!is.na(long_data6_new$happy), ]
+long_data6_new<- long_data6_new[!is.na(long_data6_new$describeORfeel), ]
+##pooled: set new ID
+long_data5_new$ID_pool<-long_data5_new$ID
+long_data6_new$ID_pool<-long_data6_new$ID+1000
+long_datapool<-data.frame(ID=c(long_data5_new$ID_pool,long_data6_new$ID_pool)
+           ,describeORfeel=c(long_data5_new$describeORfeel,long_data6_new$describeORfeel)
+           ,happy=c(long_data5_new$happy,long_data6_new$happy)
+           ,PraiseEmpathy=c(long_data5_new$PraiseEmpathy,long_data6_new$PraiseEmpathy)
+)
+
+
+```
+
+# Studies: summarizing information
+
+```{r sumtable}
+#study 4 n from praisefeel,praisedescribe, control arms: 83+13+127=223
+sumtable<-data.frame(Study=1:5
+           ,Treatment=c("-","-","Peer praise","Peer praise","Peer praise mediated by happiness")
+           ,N=c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),(nrow(data5)+nrow(data6))))
+
+studies<-data.frame(Study=c("Study 1","Study 2", "Study 3", "Study 4","Study 5A","Study 5B", "Total")
+                    ,Goal=c("Costliness of empathy","Eliciting peer praise","Peer praise on empathy","Happiness as mediator","Mediation analysis","Mediation analysis","-")
+                    ,Total_N=c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),nrow(data5),nrow(data6),sum(c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),nrow(data5),nrow(data6))))
+                    ,Total_T=c(3,"-",15,1,20,3,"-")
+                    ,Total_obs=c(nrow(long_data1),nrow(data2) #1,2
+                                 ,(1559+1561+1560),nrow(data4) #3,4
+                                 ,(3238+3242),(866+865)
+                                 ,sum(c(nrow(long_data1),nrow(data2),(1559+1561+1560),nrow(data4),(3238+3242),(866+865))))
+)
+
+#LaTeX table
+kable(studies, booktabs = T, 
+      #caption = "Summarizing information on studies.",
+      label="sumtable" ,"latex"
+      ,col.names = c("","Study goal","N","Trials","Total obs."))%>% 
+  kable_styling(latex_options = c("striped", "scale_down"),position = "center",font_size=12)%>%#, "scale_down"
+  row_spec(0, bold = T) %>%
+  column_spec(1, bold = T, color = "black", width="2cm") %>%
+  column_spec(2, width = "4cm")%>% #goal
+  column_spec(3, width = "2cm")%>% #total n
+  column_spec(4, width = "1.5cm")
+```
+
+## Respondent covariate table
+
+* Summarize which covariates measured in each study and when it was measured (pre/post treatment/dv)
+
+```{r sumcovariates}
+sumcovariates<-data.frame(Variable=c("State of residence","Age","Sex","Education","Race"
+           ,"Income","Religion","Party","Ideology"
+           ,"Trump approval","Biden approval", "Baseline empathy")
+,Study1=c("Post DV","Post DV","Post DV","Post DV","Post DV"
+         ,"Post DV","Post DV","Post DV","Post DV"
+         ,"Post DV","-","Post DV") #no treatment here
+,Study2=c("-","Post DV","Post DV","Post DV","Post DV"
+         ,"Post DV","Post DV","Post DV","Post DV"
+         ,"-","-","-")
+,Study3=c("Post T/DV","Post T/DV","Post T/DV","Post T/DV","Post T/DV"
+         ,"Post T/DV","Post T/DV","Post T/DV","Post T/DV"
+         ,"Post T/DV","-","Post T/DV")
+,Study4=c("Pre T","Pre T","Pre T","Pre T","Post T/DV"
+         ,"Post T/DV","Post T/DV","Post T/DV","Post T/DV"
+         ,"Post T/DV","-","Post T/DV")
+,Study5=c("Pre T","Pre T","Pre T","Pre T","Pre T"
+         ,"Pre T","Pre T","Pre T","Post T/DV"
+         ,"Post T/DV","Post T/DV","Post T/DV"))
+
+#LaTeX table
+kable(sumcovariates, booktabs = T, 
+      #caption = "Measurement of respondent covariates across studies. T indicates when treatment (peer praise) was measured, DV indicates when dependent variables are measured. In Studies 1 and 2 no treatments were manipulated.",
+      label="sumcov" ,"latex"
+      ,col.names = c("","Study 1","Study 2","Study 3","Study 4","Study 5 (A & B)"))%>% 
+  kable_styling(latex_options = c("striped", "scale_down"),position = "center",font_size=12)%>%#, "scale_down"
+  row_spec(0, bold = T) %>%
+  column_spec(1, bold = T, color = "black", width="2cm") %>%
+  column_spec(2:5, width = "2.5cm")%>%
+  column_spec(6, width = "3cm")%>%#total t
+  save_kable(file = "Figures/Table_S2.png")
+
+  #add_footnote("", notation="alphabet")
+```
+
+## Study 1 covariate summary table
+
+Other notes that appear in the main text:
+
+```{r otherstats1}
+#mean, range of age
+summary(as.numeric(data1$age))
+#sd age
+sd(as.numeric(data1$age),na.rm=T)
+#percent gender
+prop.table(table(data1$Sex,useNA='always'))
+#percent race
+prop.table(table(data1$Race,useNA='always'))
+#percent education
+prop.table(table(data1$Education,useNA='always'))
+
+#covariate table
+kable(summarize(data1, type = "factor", variables = c( "Sex",
+                                                      "Party", "Ideology",
+                                                      "Race","Education", 
+                                                      "Income", "Religion"
+                                                     ))
+    ,
+    #caption="Study 1 Respondents",
+    booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S3a.png")
+  
+
+data1$Age<-as.numeric(data1$age)
+kable(summarize(data1, type = "numeric", variables = "Age"),booktabs=TRUE,"latex",longtable=FALSE) %>% 
+  kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>% 
+save_kable(file = "Figures/Table_S3b.png")
+```
+
+## Study 2 covariate summary table
+
+Other notes that appear in the main text:
+
+```{r otherstats2}
+#mean, range of age
+summary(as.numeric(data2$age))
+#sd age
+sd(as.numeric(data2$age),na.rm=T)
+#percent gender
+prop.table(table(data2$Sex,useNA='always'))
+#percent race
+prop.table(table(data2$Race,useNA='always'))
+#percent education
+prop.table(table(data2$Education,useNA='always'))
+
+#covariate table
+kable(summarize(data2, type = "factor", variables = c( "Sex",
+                                                      "Party", "Ideology",
+                                                      "Race","Education", 
+                                                      "Income", "Religion"
+                                                     ))
+    ,caption="Study 2 Respondents"
+    ,booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header")) %>%
+  save_kable(file = "Figures/Table_S7a.png")
+
+data2$Age<-as.numeric(data2$age)
+kable(summarize(data2, type = "numeric", variables = "Age"),booktabs=TRUE,"latex",longtable=FALSE) %>% 
+  kable_styling(latex_options = c("striped", "hold_position","repeat_header")) %>%
+  save_kable(file = "Figures/Table_S7b.png")
+
+```
+
+## Study 3 covariate summary table
+
+```{r sumcovariates3}
+#Latex Table of Covariates for Study 3:
+#covariate table
+
+kable(summarize(data3, type = "factor", variables = c( "Sex",
+                                                      "Party", "Ideology",
+                                                      "Race","Education", 
+                                                      "Income", "Religion"
+                                                     ))
+    ,caption="Study 3 Respondents"
+    ,booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S8a.png")
+
+data3$Age<-as.numeric(data3$age)
+kable(summarize(data3, type = "numeric", variables = "Age"),booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S8b.png")
+
+```
+
+Other notes that appear in the main text:
+
+```{r otherstats3}
+#mean, range of age
+summary(as.numeric(data3$age))
+#sd age
+sd(as.numeric(data3$age))
+#percent gender
+prop.table(table(data3$Sex,useNA='always'))
+#percent race
+prop.table(table(data3$Race,useNA='always'))
+#percent education
+prop.table(table(data3$Education,useNA='always'))
+```
+
+## Study 4 covariate summary table
+
+```{r sumcovariates4}
+#Latex Table of Covariates for Study 4: 
+
+kable(summarize(data4, type = "factor", variables = c( "Sex",
+                                                      "Party", "Ideology",
+                                                      "Race","Education", 
+                                                      "Income", "Religion"
+                                                     ))
+    ,caption="Study 4 Respondents"
+    ,booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S11a.png")
+
+data4$Age<-as.numeric(data4$age)
+kable(summarize(data4, type = "numeric", variables = "Age"),booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S11b.png")
+
+```
+
+Other notes that appear in the main text:
+
+```{r otherstats4}
+#mean, range of age
+summary(as.numeric(data4$age))
+#sd age
+sd(as.numeric(data4$age),na.rm=TRUE)
+#percent gender
+prop.table(table(data4$Sex,useNA='always'))
+#percent race
+prop.table(table(data4$Race,useNA='always'))
+#percent education
+prop.table(table(data4$Education,useNA='always'))
+
+#happy: to calculate "more than a one third standard deviation increase in happiness", take coefficient on peer praise for happiness in Study 4 0.4175/sd(data4$happy,na.rm=T)
+summary(data4$happy)
+sd(data4$happy,na.rm=T)
+```
+
+
+## Study 5 covariate summary table
+
+```{r sumcovariates5}
+#Latex Table of Covariates for Study 5:
+kable(summarize(data5, type = "factor", variables = c( "Sex",
+                                                      "Party", "Ideology",
+                                                      "Race","Education", 
+                                                      "Income", "Religion"
+                                                     ))
+    ,caption="Study 5A Respondents"
+    ,booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S12a.png")
+
+data5$Age<-as.numeric(data5$age)
+kable(summarize(data5, type = "numeric", variables = "Age"),booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S12b.png")
+```
+
+Other notes that appear in the main text:
+
+```{r otherstats5}
+#mean, range of age
+summary(as.numeric(data5$age))
+# There is a person who reported their age was 10; also missed attention checks; data5$attention[63] so drop from analysis. 
+#sd age
+sd(as.numeric(data5$age),na.rm=TRUE)
+#percent gender
+prop.table(table(data5$Sex,useNA='always'))
+#percent race
+prop.table(table(data5$Race,useNA='always'))
+#percent education
+prop.table(table(data5$Education,useNA='always'))
+
+#happy: 
+summary(data5$happy)
+sd(data5$happy,na.rm=T)
+```
+
+## Study 6 covariate summary table
+
+```{r sumcovariates6}
+#Latex Table of Covariates for Study 6:
+kable(summarize(data6, type = "factor", variables = c( "Sex",
+                                                      "Party", "Ideology",
+                                                      "Race","Education", 
+                                                      "Income", "Religion"
+                                                     ))
+    ,caption="Study 5B Respondents"
+    ,booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S13a.png")
+
+data6$Age<-as.numeric(data6$age)
+kable(summarize(data6, type = "numeric", variables = "Age"),booktabs=TRUE,"latex",longtable=FALSE) %>% kable_styling(latex_options = c("striped", "hold_position","repeat_header"))%>%
+  save_kable(file = "Figures/Table_S13b.png")
+```
+
+```{r otherstats6}
+#mean, range of age
+summary(as.numeric(data6$age))
+#sd age
+sd(as.numeric(data6$age),na.rm=TRUE)
+#percent gender
+prop.table(table(data6$Sex,useNA='always'))
+#percent race
+prop.table(table(data6$Race,useNA='always'))
+#percent education
+prop.table(table(data6$Education,useNA='always'))
+
+#happy: 
+summary(data6$happy)
+sd(data5$happy,na.rm=T)
+```
+# Costs of empathy visualization
+
+```{r costchoice}
+cost1<-miceadds::glm.cluster( data=long_data1, formula=describeORfeel ~ 1, cluster="ID", family=binomial(link="logit"))
+summary(cost1)
+exp(coef(cost1))#[Odds ratio to %: (OR-1) * 100] 39.7% lower likelihood of choosing empathy task over objective task
+```
+Baseline odds of choosing empathy over objective task is `r exp(coef(cost1))`.
+
+```{r costwage}
+t.test(data1$reservationpay_real, mu = 1, alternative = "greater")
+```
+
+```{r costtaskload}
+#post3 mentally demanding describe
+#post4 hard to accomplish describe
+#post5 insecure discouraged describe
+#post6 successful at describe
+
+#post7 mentally demanding feel
+#post8 hard to accomplish feel
+#post9 insecure discouraged feel
+#post10 successful at feel
+evaltask_data<-data.frame(ID=data1$ID, Task=rep(c("DESCRIBE","FEEL"),each=nrow(data1))
+                          ,Demanding=as.numeric(c(data1$post3,data1$post7))
+                          ,Hard=as.numeric(c(data1$post4,data1$post8))
+                          ,Insecure=as.numeric(c(data1$post5,data1$post9))
+                          ,Successful=as.numeric(c(data1$post6,data1$post10)))
+tmp_colors<-viridis(n=2,alpha=0.6,begin=0.25,end=1,direction=1,option="D")
+tmp_colors<-viridis(n=3,begin=0.25,end=1,direction=1,alpha=0.75,option="D")
+
+t_demanding <-t.test(evaltask_data$Demanding~evaltask_data$Task)
+t_hard <-t.test(evaltask_data$Hard~evaltask_data$Task)
+t_insecure <-t.test(evaltask_data$Insecure~evaltask_data$Task)
+t_successful <-t.test(evaltask_data$Successful~evaltask_data$Task)
+#table of describe vs feel for demanding/hard/insecure/successful
+tmp_d<-data.frame(Task=c("Objective (DESCRIBE)","Empathy (FEEL)","Difference")
+           ,Demanding=c(round(tapply(evaltask_data$Demanding,evaltask_data$Task,mean,na.rm=TRUE),3)
+                        ,paste(round(t_demanding$estimate[2]-t_demanding$estimate[1],3)," (p=",round(t_demanding$p.value,4),")",sep="")) #difference in means, p in parenthesis
+           ,Hard=c(round(tapply(evaltask_data$Hard,evaltask_data$Task,mean,na.rm=TRUE),3)
+                   ,paste(round(t_hard$estimate[2]-t_hard$estimate[1],3)," (p=",round(t_hard$p.value,4),")",sep=""))
+           ,Insecure=c(round(tapply(evaltask_data$Insecure,evaltask_data$Task,mean,na.rm=TRUE),3)
+                       ,paste(round(t_insecure$estimate[2]-t_insecure$estimate[1],3)," (p=",round(t_insecure$p.value,4),")",sep=""))
+           ,Successful=c(round(tapply(evaltask_data$Successful,evaltask_data$Task,mean,na.rm=TRUE),3)
+                        ,paste(round(t_successful$estimate[2]-t_successful$estimate[1],3)," (p=",round(t_successful$p.value,4),")",sep="")))
+rownames(tmp_d)<-NULL
+print(xtable(tmp_d
+             ,caption = "Task load summary"
+             ), 
+             floating = TRUE, latex.environments = "center")
+
+#LaTeX version
+kable(tmp_d,label = "costtaskload"
+      , caption = "Task load summary. Mean values reported (choices from 1-5)."
+      ,"latex",booktabs=T, digits=3) %>%
+  kable_styling(latex_options=c("striped","hold_position"),full_width=F,font_size=12)%>%
+  #footnote(general = "")%>%
+  #column_spec(1, bold = T, width = "5em")%>%
+  #column_spec(2, width = "10em")%>%
+  #column_spec(3, width = "10em")%>%
+  row_spec(0, bold = T)%>% 
+  landscape()%>% 
+save_kable(file = "Figures/Table_S6.png")
+```
+
+
+```{r costtaskprefer}
+prop.table(table(data1$post1_prefer,useNA='always'))
+
+prop.table(table(data1$post1_prefer))
+```
+
+# Treatment visualization 
+
+* idea is to get what it is
+* what people were saying
+* show that it is "light" and immediately before decks
+
+# Effects of peer praise
+
+* main ATE plot
+* distribution of happiness under treatment/control
+* main AMCE plot
+
+## ATE Praise on empathy
+
+Pulling from Study 2 (paper=Study3).
+
+```{r praiseempathy}
+#Praise vs Control
+ate1 <- miceadds::glm.cluster( data=long_data3, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate1) #log odds output: baseline log odds of choosing empathy task is -0.44; difference in log-odds of choosing empathy and objective tasks is 0.182 -- peer-praised group has [log-odds to odds-ratio: exp(log-odds)] exp(0.1819)=1.20 times the odds of choosing empathy over objective task as the control group. [Odds ratio to %: (OR-1) * 100] Peer-praised group has a 20% greater likelihood of choosing empathy task over objective task compared to control group.
+```
+
+Table summarizing log odds, odds ratio, %.
+
+```{r praiseempathy table}
+alpha2=0.05/2
+#rows=intercept, praise
+praisetable<-data.frame(LO=coef(ate1)
+  ,CIlow_LO=c(coef(ate1)[1] - qnorm(1-alpha2)*0.09344624,coef(ate1)[2] - qnorm(1-alpha2)*0.08020047)
+  ,CIup_LO=c(coef(ate1)[1] + qnorm(1-alpha2)*0.09344624,coef(ate1)[2] + qnorm(1-alpha2)*0.08020047)
+  ,OR=exp(coef(ate1))
+  ,CIlow_OR=exp(coef(ate1) - qnorm(1-alpha2)* c(0.09344624,0.08020047))
+  ,CIup_OR=exp(coef(ate1) + qnorm(1-alpha2)* c(0.09344624,0.08020047)))
+praisetable$CI_LO<-paste("[",round(praisetable$CIlow_LO,3),",",round(praisetable$CIup_LO,3),"]",sep="")
+praisetable$CI_OR<-paste("[",round(praisetable$CIlow_OR,3),",",round(praisetable$CIup_OR,3),"]",sep="")
+#LaTeX table
+tmp<-praisetable[,c("LO","CI_LO","OR","CI_OR")]
+rownames(tmp)<-c("Intercept","Peer praise for empathy")
+kable(tmp, booktabs = T, caption = "Peer praise effect on task choice.",label="praisetable" ,"latex"
+      ,col.names = c("Log Odds","95% CI","Odds Ratio","95% CI"),digits=3)%>% 
+  kable_styling(latex_options = c("striped", "scale_down"),position = "center",font_size=12)%>%#, "scale_down"
+  row_spec(0, bold = T) %>%
+  column_spec(1, bold = T, color = "black", width="3cm") %>%
+  column_spec(2, width = "2cm")%>% 
+  column_spec(3, width = "3cm")%>% 
+  column_spec(4, width = "2cm")
+```
+
+```{r praiseempathy-plot}
+praisetable$group<-c("Control","Peer praise")
+praisetable$OR2<-c(exp(coef(ate1)[1]),exp(sum(coef(ate1)))) #this is the summative exponeniated ver for or in praise (not effect)
+praisetable$CIlow_OR2<- praisetable$OR2 - qnorm(1-alpha2)* c(0.09344624,0.08020047)
+praisetable$CIup_OR2<- praisetable$OR2 + qnorm(1-alpha2)* c(0.09344624,0.08020047)
+ggplot(praisetable) +
+  geom_bar(aes(x=group, y=OR2), stat="identity"
+           ,fill=viridis(2,begin=0.25,end=1,direction=1,option="D", alpha=0.9)) +
+  geom_linerange( aes(x=group, ymin=CIlow_OR2, ymax=CIup_OR2), colour="gray20", alpha=0.7, size=1) +
+  geom_text(x=1,y=0.9,label=round(praisetable$OR2[1],3), colour="gray20",size=5) +
+  geom_text(x=2,y=1.0,label=round(praisetable$OR2[2],3), colour="gray20",size=5) +
+  geom_text(x=1.5,y=1.1
+            ,label=paste("Difference: ",round(praisetable$OR2[2]-praisetable$OR2[1],3)," (p=0.02)",sep="")
+            ,color="gray20",size=5) +
+  ggtitle(" ") + theme_bw() + ylim(0,1.1) + ylab("Odds ratio choosing empathy task") + xlab(" ") +
+  theme(axis.text.x=element_text(size=12), axis.title.y=element_text(size=12))  +
+    scale_x_discrete(labels= c("Control","Peer praise empathy"))
+#ate_praiseempathy.pdf
+```
+
+### A check on reservation wage
+
+Is `reservationpay` under `PraiseEmpathy` < `reservationpay` under `Control` ?
+
+```{r,eval=TRUE,message=FALSE,warning=FALSE}
+ate_wage <- lm(reservationpay_real ~ PraiseEmpathy16, data = data3)
+summary(ate_wage)
+```
+
+Lower wage under peer praise for empathy, but not statistically significant.
+
+# Mediator: happiness
+
+## Distribution of happiness under treatment/control
+
+Pulling from Study 4.
+
+```{r, praisehappy}
+praisehappy1 <- lm(happy ~ PraiseEmpathy, data = data4)
+summary(praisehappy1)
+
+data4 %>%
+  ggplot( aes(x=happy, fill=as.factor(PraiseEmpathy))) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
+    scale_fill_manual(values=c("#69b3a2", "#404080")) +
+    theme_ipsum() +
+    labs(fill="")
+#t.test(data4$happy~data4$PraiseEmpathy)
+# sample size
+sample_size = data4 %>% filter(!is.na(PraiseEmpathy))%>% group_by(PraiseEmpathy) %>% dplyr::summarize(num=n())
+data4$name<-ifelse(data4$PraiseEmpathy==1,"Peer praise empathy",ifelse(data4$PraiseEmpathy==0,"Control",""))
+# Plot
+praisehappyplot<-data4 %>%
+  filter(!is.na(PraiseEmpathy))%>%
+  left_join(sample_size) %>%
+  #mutate(myaxis = paste0(name, "\n", "n=", num)) %>%
+  mutate(myaxis = name) %>%
+  ggplot( aes(x=myaxis, y=happy, fill=name)) +
+    geom_violin(width=1) +
+    geom_boxplot(width=0.1, color="grey20", alpha=0.2) +
+    scale_fill_viridis(discrete = TRUE,alpha=0.7,begin=0.25,end=1,option="D") +
+    theme_bw() + ylab("Happiness") + xlab("") + ggtitle("Happiness distribution by treatment arm") + 
+    theme(
+      legend.position="none",
+      axis.title.y = element_text(size=12),
+      axis.text.y = element_text(size=12),
+      axis.text.x = element_text(size=12),
+      plot.title = element_text(size=13,face="bold")
+    ) + coord_flip()  + geom_text(x=2.535,y=3,label="Difference in means: 0.417 (p=0.01)",color="gray20",size=4.5)
+praisehappyplot 
+#praise-happy_dist.pdf 7x7
+```
+
+## Also check for pride
+
+```{r praisepride}
+praisepride1 <- lm(pride ~ PraiseEmpathy, data = data4)
+summary(praisepride1)
+
+data4 %>%
+  ggplot( aes(x=pride, fill=as.factor(PraiseEmpathy))) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
+    scale_fill_manual(values=c("#69b3a2", "#404080")) +
+    theme_ipsum() +
+    labs(fill="")
+#t.test(data4$pride~data4$PraiseEmpathy)
+# sample size
+sample_size = data4 %>% filter(!is.na(PraiseEmpathy))%>% group_by(PraiseEmpathy) %>% dplyr::summarize(num=n())
+data4$name<-ifelse(data4$PraiseEmpathy==1,"Peer praise empathy",ifelse(data4$PraiseEmpathy==0,"Control",""))
+# Plot
+praiseprideplot<-data4 %>%
+  filter(!is.na(PraiseEmpathy))%>%
+  left_join(sample_size) %>%
+  #mutate(myaxis = paste0(name, "\n", "n=", num)) %>%
+  mutate(myaxis = name) %>%
+  ggplot( aes(x=myaxis, y=happy, fill=name)) +
+    geom_violin(width=1) +
+    geom_boxplot(width=0.1, color="grey20", alpha=0.2) +
+    scale_fill_viridis(discrete = TRUE,alpha=0.7,begin=0.25,end=1,option="D") +
+    theme_bw() + ylab("Pride") + xlab("") + ggtitle("Pride distribution by treatment arm") + 
+    theme(
+      legend.position="none",
+      axis.title.y = element_text(size=12),
+      axis.text.y = element_text(size=12),
+      axis.text.x = element_text(size=12),
+      plot.title = element_text(size=13,face="bold")
+    ) + coord_flip()  + geom_text(x=2.535,y=3,label="Difference in means: 0.487 (p=0.002)",color="gray20",size=4.5)
+praiseprideplot 
+#praise-pride_dist.pdf 7x7
+```
+
+## AMCE of praise-happiness-feel
+
+Pulling from Study 5 (and continued, Study 6).
+
+```{r amce-calc, eval=FALSE}
+## Study 5 had two days -- these are going to be called 5, 6 throughout. Pooled combines 5 and 6.
+set.seed(12345)
+nsims=10000
+happy_med <- lm(happy ~ PraiseEmpathy, data=long_data5_new)
+happy_out <- glm(describeORfeel~PraiseEmpathy + happy, data = long_data5_new, family=binomial(link="logit"))
+
+#note that we cannot run boot=TRUE with clustering
+mediation_happy5 <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.95, sims=nsims,cluster=long_data5_new$ID)
+
+mediation_happy5_90 <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.9, sims=nsims,cluster=long_data5_new$ID)
+
+saveRDS(mediation_happy5, file="../Data/Survey Data/Across Studies/mediation_happy5.rds")
+saveRDS(mediation_happy5_90, file="../Data/Survey Data/Across Studies/mediation_happy5_90.rds")
+summary(mediation_happy5)
+#par(mar=c(5,6.5,3.2,01)) #plot_amce5<-plot(mediation_happy, labels=c("ACME\n(Happiness)", "Direct Effect\n(Empathy)", "Total Effect"))
+
+#study 6: 
+happy_med <- lm(happy ~ PraiseEmpathy, data=long_data6_new )
+happy_out <- glm(describeORfeel~PraiseEmpathy + happy, data = long_data6_new, family=binomial(link="logit"))
+
+#note that we cannot run boot=TRUE with clustering
+mediation_happy6 <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.95, sims=nsims,cluster=long_data6_new$ID)
+mediation_happy6_90 <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.9, sims=nsims,cluster=long_data6_new$ID)
+
+saveRDS(mediation_happy6, file="../Data/Survey Data/Across Studies/mediation_happy6.rds")
+saveRDS(mediation_happy6_90, file="../Data/Survey Data/Across Studies/mediation_happy6_90.rds")
+summary(mediation_happy6)
+#par(mar=c(5,6.5,3.2,01)) #plot_amce6<-plot(mediation_happy, labels=c("ACME\n(Happiness)", "Direct Effect\n(Empathy)", "Total Effect"))
+
+
+happy_med <- lm(happy ~ PraiseEmpathy, data=long_datapool )
+happy_out <- glm(describeORfeel~PraiseEmpathy + happy, data = long_datapool, family=binomial(link="logit"))
+
+mediation_happypool <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.95, sims=nsims,cluster=long_datapool$ID_pool)
+mediation_happypool_90 <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.9, sims=nsims,cluster=long_datapool$ID_pool)
+
+saveRDS(mediation_happypool, file="../Data/Survey Data/Across Studies/mediation_happypool.rds")
+saveRDS(mediation_happypool_90, file="../Data/Survey Data/Across Studies/mediation_happypool_90.rds")
+summary(mediation_happypool)
+```
+
+```{r amce-plot}
+mediation_happy5<-readRDS("../Data/Survey Data/Across Studies/mediation_happy5.rds")
+mediation_happy5_90<-readRDS("../Data/Survey Data/Across Studies/mediation_happy5_90.rds")
+mediation_happy6<-readRDS("../Data/Survey Data/Across Studies/mediation_happy6.rds")
+mediation_happy6_90<-readRDS("../Data/Survey Data/Across Studies/mediation_happy6_90.rds")
+mediation_happypool<-readRDS("../Data/Survey Data/Across Studies/mediation_happypool.rds")
+mediation_happypool_90<-readRDS("../Data/Survey Data/Across Studies/mediation_happypool_90.rds")
+#plot data: 5, 6, pooled 
+plot_data<-data.frame(group=rep(c("5A","5B","Pooled"),each=3)
+           ,type=rep(c("ACME","Direct effect","Total effect"),times=3)
+           ,estimate=c(round(mediation_happy5$d.avg,3),round(mediation_happy5$z.avg,3),round(mediation_happy5$tau.coef,3)#5a
+                       ,round(mediation_happy6$d.avg,3),round(mediation_happy6$z.avg,3),round(mediation_happy6$tau.coef,3)#5b
+                       ,round(mediation_happypool$d.avg,3),round(mediation_happypool$z.avg,3),round(mediation_happypool$tau.coef,3))#pooled
+           ,lower=c(round(mediation_happy5$d.avg.ci[1],4),round(mediation_happy5$z.avg.ci[1],4),round(mediation_happy5$tau.ci[1],4) #5a
+                    ,round(mediation_happy6$d.avg.ci[1],4),round(mediation_happy6$z.avg.ci[1],4),round(mediation_happy6$tau.ci[1],4) #5b
+                    ,round(mediation_happypool$d.avg.ci[1],4),round(mediation_happypool$z.avg.ci[1],4),round(mediation_happypool$tau.ci[1],4)) #pooled
+                    
+           ,upper=c(round(mediation_happy5$d.avg.ci[2],4),round(mediation_happy5$z.avg.ci[2],4),round(mediation_happy5$tau.ci[2],4) #5a
+                    ,round(mediation_happy6$d.avg.ci[2],4),round(mediation_happy6$z.avg.ci[2],4),round(mediation_happy6$tau.ci[2],4) #5b
+                    ,round(mediation_happypool$d.avg.ci[2],4),round(mediation_happypool$z.avg.ci[2],4),round(mediation_happypool$tau.ci[2],4)) #pooled
+           )
+#plot amce info
+plot_data$type<-factor(plot_data$type,levels = c("Total effect","Direct effect","ACME"))
+ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  #geom_point(position = position_dodge(width = 0.2),aes(color=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 5) +
+  geom_text(x=3.0575,y=0.03
+            ,label=plot_data$estimate[which(plot_data$group=="Pooled"&plot_data$type=="ACME")]
+            ,color=viridis(1,alpha=1,begin=0.0,end=0.0,option="D")) +
+  geom_text(x=2.0575,y=0.1
+            ,label=plot_data$estimate[which(plot_data$group=="Pooled"&plot_data$type=="Direct effect")]
+            ,color=viridis(1,alpha=1,begin=0.0,end=0.0,option="D")) +
+  geom_text(x=1.0575,y=0.105
+            ,label=plot_data$estimate[which(plot_data$group=="Pooled"&plot_data$type=="Total effect")]
+            ,color=viridis(1,alpha=1,begin=0.0,end=0.0,option="D")) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(alpha=1,begin=0.75,end=0.0,discrete=T,option="D") +
+  xlab("") + ylab("Estimate") + ylim(-0.05,0.15) +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank(),
+        axis.text.y=element_text(size=12,face="bold"))
+  
+#acme5.pdf 5x7 landscape
+```
+
+
+### Also see if there's a praise-PRIDE-feel AMCE
+
+Only measured in Study 4
+
+```{r amce-pride-calc, eval=FALSE}
+set.seed(12345)
+nsims=10000
+
+tmp_data<-subset(data4,select=c("PraiseEmpathy","pride","describeORfeel"))
+tmp_data<-na.omit(tmp_data)
+pride_med <- lm(pride ~ PraiseEmpathy, data=tmp_data)
+pride_out <- glm(describeORfeel~PraiseEmpathy + pride, data = tmp_data, family=binomial(link="logit"))
+
+#note that we cannot run boot=TRUE with clustering
+mediation_pride <-  mediate(pride_med, pride_out, treat = "PraiseEmpathy", mediator = "pride", boot=T, conf.level=.95, sims=nsims)
+
+mediation_pride_90 <-  mediate(pride_med, pride_out, treat = "PraiseEmpathy", mediator = "pride", boot=T, conf.level=.9, sims=nsims)
+
+saveRDS(mediation_pride, file="../Data/Survey Data/Across Studies/mediation_pride.rds")
+saveRDS(mediation_pride_90, file="../Data/Survey Data/Across Studies/mediation_pride_90.rds")
+summary(mediation_pride)
+```
+
+```{r amce-pride-plot}
+mediation_pride<-readRDS("../Data/Survey Data/Across Studies/mediation_pride.rds")
+mediation_pride_90<-readRDS("../Data/Survey Data/Across Studies/mediation_pride_90.rds")
+#plot data: 
+plot_data<-data.frame(type=c("ACME","Direct effect","Total effect")
+           ,estimate=c(round(mediation_pride$d.avg,3),round(mediation_pride$z.avg,3),round(mediation_pride$tau.coef,3))#pooled
+           ,lower=c(round(mediation_pride$d.avg.ci[1],4),round(mediation_pride$z.avg.ci[1],4),round(mediation_pride$tau.ci[1],4))
+                    
+           ,upper=c(round(mediation_pride$d.avg.ci[2],4),round(mediation_pride$z.avg.ci[2],4),round(mediation_pride$tau.ci[2],4)))
+#plot amce info
+plot_data$type<-factor(plot_data$type,levels = c("Total effect","Direct effect","ACME"))
+ggplot(plot_data,aes(y=estimate,x=type)) +
+  #geom_point(position = position_dodge(width = 0.2),aes(color=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper),fatten = 5) +
+  geom_text(x=3.0575,y=0.053
+            ,label=plot_data$estimate[which(plot_data$type=="ACME")]
+            ,color=viridis(1,alpha=1,begin=0.0,end=0.0,option="D")) +
+  geom_text(x=2.0575,y=-0.036
+            ,label=plot_data$estimate[which(plot_data$type=="Direct effect")]
+            ,color=viridis(1,alpha=1,begin=0.0,end=0.0,option="D")) +
+  geom_text(x=1.0575,y=0.017
+            ,label=plot_data$estimate[which(plot_data$type=="Total effect")]
+            ,color=viridis(1,alpha=1,begin=0.0,end=0.0,option="D")) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(alpha=1,begin=0.75,end=0.0,discrete=T,option="D") +
+  xlab("") + ylab("Estimate") + ylim(-0.2,0.2) +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank(),
+        axis.text.y=element_text(size=12,face="bold"))
+  
+#acme-pride4.pdf 5x7 landscape
+```
+
+# Discussion on Scope of Peer Praise for Empathy
+
+* Uses Study 3 T->Y (`long_data3`)
+* Study 5/6 T-M-Y (pooled: `long_datapool`)
+* Study 3+5+6 T-M-Y (total pooled: `long_datatotpool`)
+* Notes: presidential approval question for Study 3 was for Donald Trump. Studies 5 and 5 asked about approval for Trump again but then presidential approval was also asked for Joe Biden (who was in office by this time).
+* 1 is approve extremely strongly 7 is disapprove extremely strongly -- reorder so reverse
+
+```{r scopedata}
+#set up data for scope section
+#study 3: presidential(trump) approval variable
+long_data3$trump_approval_n<-ifelse(long_data3$pres_approval=="1",7
+                                ,ifelse(long_data3$pres_approval=="2",6
+                                    ,ifelse(long_data3$pres_approval=="3",5
+                                        ,ifelse(long_data3$pres_approval=="4",4
+                                            ,ifelse(long_data3$pres_approval=="5",3
+                                               ,ifelse(long_data3$pres_approval=="6",2
+                                                  ,ifelse(long_data3$pres_approval=="7",1,NA)))))))
+#5/6
+#presidential(trump) approval variable: trump_approval
+#presidential(biden) approval variable: pres_approval
+long_data5_new$trump_approval_n<-ifelse(long_data5_new$trump_approval=="1",7
+                                ,ifelse(long_data5_new$trump_approval=="2",6
+                                    ,ifelse(long_data5_new$trump_approval=="3",5
+                                        ,ifelse(long_data5_new$trump_approval=="4",4
+                                            ,ifelse(long_data5_new$trump_approval=="5",3
+                                               ,ifelse(long_data5_new$trump_approval=="6",2
+                                                  ,ifelse(long_data5_new$trump_approval=="7",1,NA)))))))
+long_data6_new$trump_approval_n<-ifelse(long_data6_new$trump_approval=="1",7
+                                ,ifelse(long_data6_new$trump_approval=="2",6
+                                    ,ifelse(long_data6_new$trump_approval=="3",5
+                                        ,ifelse(long_data6_new$trump_approval=="4",4
+                                            ,ifelse(long_data6_new$trump_approval=="5",3
+                                               ,ifelse(long_data6_new$trump_approval=="6",2
+                                                  ,ifelse(long_data6_new$trump_approval=="7",1,NA)))))))
+long_data5_new$biden_approval_n<-ifelse(long_data5_new$pres_approval=="1",7
+                                ,ifelse(long_data5_new$pres_approval=="2",6
+                                    ,ifelse(long_data5_new$pres_approval=="3",5
+                                        ,ifelse(long_data5_new$pres_approval=="4",4
+                                            ,ifelse(long_data5_new$pres_approval=="5",3
+                                               ,ifelse(long_data5_new$pres_approval=="6",2
+                                                  ,ifelse(long_data5_new$pres_approval=="7",1,NA)))))))
+long_data6_new$biden_approval_n<-ifelse(long_data6_new$pres_approval=="1",7
+                                ,ifelse(long_data6_new$pres_approval=="2",6
+                                    ,ifelse(long_data6_new$pres_approval=="3",5
+                                        ,ifelse(long_data6_new$pres_approval=="4",4
+                                            ,ifelse(long_data6_new$pres_approval=="5",3
+                                               ,ifelse(long_data6_new$pres_approval=="6",2
+                                                  ,ifelse(long_data6_new$pres_approval=="7",1,NA)))))))
+#Study 3 base empathy battery index
+long_data3$BaseEmpathy_battery <- long_data3$BaseEmpathy_perspective + long_data3$BaseEmpathy_warm + long_data3$BaseEmpathy_anxiety + long_data3$BaseEmpathy_imagination
+# Find tertiles
+vTert = quantile(long_data3$BaseEmpathy_battery, c(0:3/3),na.rm=TRUE)
+# classify values
+long_data3$BaseEmpathy_tercile <-  with(long_data3,cut(BaseEmpathy_battery,vTert,include.lowest = T,labels = c("Low", "Medium", "High")))
+
+#Study 5 base empathy battery index
+long_data5_new$BaseEmpathy_battery <- long_data5_new$BaseEmpathy_perspective + long_data5_new$BaseEmpathy_warm + long_data5_new$BaseEmpathy_anxiety + long_data5_new$BaseEmpathy_imagination
+#Study 6 base empathy battery index
+long_data6_new$BaseEmpathy_battery <- long_data6_new$BaseEmpathy_perspective + long_data6_new$BaseEmpathy_warm + long_data6_new$BaseEmpathy_anxiety + long_data6_new$BaseEmpathy_imagination
+
+long_datapool<-data.frame(ID=c(long_data5_new$ID_pool,long_data6_new$ID_pool)
+           ,describeORfeel=c(long_data5_new$describeORfeel,long_data6_new$describeORfeel)
+           ,happy=c(long_data5_new$happy,long_data6_new$happy)
+           ,Party=c(as.character(long_data5_new$Party),as.character(long_data6_new$Party))
+           ,Race=c(as.character(long_data5_new$Race),as.character(long_data6_new$Race))
+           ,Sex=c(as.character(long_data5_new$Sex),as.character(long_data6_new$Sex))
+           ,Education=c(as.character(long_data5_new$Education),as.character(long_data6_new$Education))
+           ,Income=c(as.character(long_data5_new$Income),as.character(long_data6_new$Income))
+           ,Age=c(as.character(long_data5_new$Age),as.character(long_data6_new$Age))
+           ,trump_approval_n=c(long_data5_new$trump_approval_n,long_data6_new$trump_approval_n)
+           ,biden_approval_n=c(long_data5_new$biden_approval_n,long_data6_new$biden_approval_n)
+           ,BaseEmpathy_perspective=c(long_data5_new$BaseEmpathy_perspective,long_data6_new$BaseEmpathy_perspective)
+           ,BaseEmpathy_warm=c(long_data5_new$BaseEmpathy_warm,long_data6_new$BaseEmpathy_warm)
+           ,BaseEmpathy_anxiety=c(long_data5_new$BaseEmpathy_anxiety,long_data6_new$BaseEmpathy_anxiety)
+           ,BaseEmpathy_imagination=c(long_data5_new$BaseEmpathy_imagination,long_data6_new$BaseEmpathy_imagination)
+           ,BaseEmpathy_battery=c(long_data5_new$BaseEmpathy_battery,long_data6_new$BaseEmpathy_battery)
+           ,attention=c(long_data5_new$attention,long_data6_new$attention)
+           ,PraiseEmpathy=c(long_data5_new$PraiseEmpathy,long_data6_new$PraiseEmpathy)
+)
+# Find tertiles
+vTert = quantile(long_datapool$BaseEmpathy_battery, c(0:3/3),na.rm=TRUE)
+# classify values
+long_datapool$BaseEmpathy_tercile <-  with(long_datapool,cut(BaseEmpathy_battery,vTert,include.lowest = T,labels = c("Low", "Medium", "High")))
+#3/5/6
+  #for unique data3 ID, add 3000
+  #order is 3,5,6
+long_datatotpool<-data.frame(ID=c(long_data3$ID+3000,long_data5_new$ID_pool,long_data6_new$ID_pool)
+           ,describeORfeel=c(long_data3$describeORfeel,long_data5_new$describeORfeel,long_data6_new$describeORfeel)
+           ,happy=c(rep(NA,nrow(long_data3)),long_data5_new$happy,long_data6_new$happy) #study3 didn't measure happy
+           ,Party=c(as.character(long_data3$Party),as.character(long_data5_new$Party),as.character(long_data6_new$Party))
+           ,Race=c(as.character(long_data3$Race),as.character(long_data5_new$Race),as.character(long_data6_new$Race))
+           ,Sex=c(as.character(long_data3$Sex),as.character(long_data5_new$Sex),as.character(long_data6_new$Sex))
+           ,Education=c(as.character(long_data3$Education),as.character(long_data5_new$Education)
+                        ,as.character(long_data6_new$Education))
+           ,Income=c(as.character(long_data3$Income),as.character(long_data5_new$Income)
+                        ,as.character(long_data6_new$Income))
+           ,Age=c(as.character(long_data3$Age),as.character(long_data5_new$Age),as.character(long_data6_new$Age))
+           ,trump_approval_n=c(long_data3$trump_approval_n,long_data5_new$trump_approval_n
+                               ,long_data6_new$trump_approval_n)
+           ,biden_approval_n=c(rep(NA,nrow(long_data3)),long_data5_new$biden_approval_n
+                               ,long_data6_new$biden_approval_n)#study3 didn't measure biden
+            ,BaseEmpathy_perspective=c(long_data3$BaseEmpathy_perspective
+                                       ,long_data5_new$BaseEmpathy_perspective,long_data6_new$BaseEmpathy_perspective)
+           ,BaseEmpathy_warm=c(long_data3$BaseEmpathy_warm,
+                               long_data5_new$BaseEmpathy_warm,long_data6_new$BaseEmpathy_warm)
+           ,BaseEmpathy_anxiety=c(long_data3$BaseEmpathy_anxiety,
+                                  long_data5_new$BaseEmpathy_anxiety,long_data6_new$BaseEmpathy_anxiety)
+           ,BaseEmpathy_imagination=c(long_data3$BaseEmpathy_imagination,
+                                      long_data5_new$BaseEmpathy_imagination,long_data6_new$BaseEmpathy_imagination)
+           ,BaseEmpathy_battery=c(long_data3$BaseEmpathy_battery
+                                  ,long_data5_new$BaseEmpathy_battery,long_data6_new$BaseEmpathy_battery)
+           ,PraiseEmpathy=c(long_data3$PraiseEmpathy,long_data5_new$PraiseEmpathy,long_data6_new$PraiseEmpathy)
+)
+
+# Find tertiles
+vTert = quantile(long_datatotpool$BaseEmpathy_battery, c(0:3/3),na.rm=TRUE)
+# classify values
+long_datatotpool$BaseEmpathy_tercile <-  with(long_datatotpool,cut(BaseEmpathy_battery,vTert,include.lowest = T,labels = c("Low", "Medium", "High")))
+```
+
+## Works broadly across groups
+
+Subgroup effects: who does peer praise work best for? Seems to be able to work pretty broadly across many demographic categories.
+
+### by Party
+
+```{r subparty}
+#study 3
+long_data3D<-subset(long_data3,Party=="Democrat"|Party=="Strong Democrat"|Party=="Lean Democrat")
+long_data3R<-subset(long_data3,Party=="Republican"|Party=="Strong Republican"|Party=="Lean Republican")
+long_data3I<-subset(long_data3,Party=="Independent"|Party=="Lean Democrat"|Party=="Lean Republican")
+#models
+ate3D <- miceadds::glm.cluster( data=long_data3D, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3D) 
+ate3R <- miceadds::glm.cluster( data=long_data3R, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3R) 
+ate3I <- miceadds::glm.cluster( data=long_data3I, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3I) 
+#study 5/6
+long_data5D<-subset(long_datapool,Party=="Democrat"|Party=="Strong Democrat"|Party=="Lean Democrat")
+long_data5R<-subset(long_datapool,Party=="Republican"|Party=="Strong Republican"|Party=="Lean Republican")
+long_data5I<-subset(long_datapool,Party=="Independent")
+#models
+ate5D <- miceadds::glm.cluster( data=long_data5D, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5D) 
+ate5R <- miceadds::glm.cluster( data=long_data5R, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5R) 
+ate5I <- miceadds::glm.cluster( data=long_data5I, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5I) 
+#all
+long_datatotD<-subset(long_datatotpool,Party=="Democrat"|Party=="Strong Democrat"|Party=="Lean Democrat")
+long_datatotR<-subset(long_datatotpool,Party=="Republican"|Party=="Strong Republican"|Party=="Lean Republican")
+long_datatotI<-subset(long_datatotpool,Party=="Independent")
+#models
+atetotD <- miceadds::glm.cluster( data=long_datatotD, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotD) 
+atetotR <- miceadds::glm.cluster( data=long_datatotR, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotR) 
+atetotI <- miceadds::glm.cluster( data=long_datatotI, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotI) 
+
+```
+
+```{r subparty plot}
+#plot data: 5, 6, pooled 
+plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=3)
+           ,type=rep(c("Democrat","Republican","Independent"),times=3)
+           ,estimate=c(coef(ate3D)[2],coef(ate3R)[2],coef(ate3I)[2]
+                       ,coef(ate5D)[2],coef(ate5R)[2],coef(ate5I)[2]
+                       ,coef(atetotD)[2],coef(atetotR)[2],coef(atetotI)[2])
+           ,se=c(summary(ate3D)[2,2],summary(ate3R)[2,2],summary(ate3I)[2,2]
+                 ,summary(ate5D)[2,2],summary(ate5R)[2,2],summary(ate5I)[2,2]
+                 ,summary(atetotD)[2,2],summary(atetotR)[2,2],summary(atetotI)[2,2]))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = c("Democrat","Republican","Independent"))
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+plot_subparty<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.4,0.65) + ggtitle("by Party") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subparty
+#ate_subparty.pdf 6x6
+```
+
+BaseEmpathy battery values range from 0 to 40. 
+
+```{r subparty base empathy plot}
+#to go with subparty ate plot, this plots the histogram of base empathy for each party level
+#plot data: 5, 6, pooled 
+plot_dataD<-data.frame(group=c(rep("Study 3",length(long_data3$BaseEmpathy_battery[which(long_data3$Party=="Democrat")]))
+            ,rep("Study 5A & 5B",length(long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Democrat")]))
+            ,rep("Pooled",length(long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Democrat")])))                    ,value=c(long_data3$BaseEmpathy_battery[which(long_data3$Party=="Democrat")]
+                    #,long_data3$BaseEmpathy_battery[which(long_data3$Party=="Republican")]
+                    #,long_data3$BaseEmpathy_battery[which(long_data3$Party=="Independent")]
+                    ,long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Democrat")]
+                    #,long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Republican")]
+                    #,long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Independent")]
+                    ,long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Democrat")]
+                    #,long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Republican")]
+                    #,long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Independent")]
+                    ))
+
+plot_dataR<-data.frame(group=c(rep("Study 3",length(long_data3$BaseEmpathy_battery[which(long_data3$Party=="Republican")]))
+            ,rep("Study 5A & 5B",length(long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Republican")]))
+            ,rep("Pooled",length(long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Republican")])))                    ,value=c(long_data3$BaseEmpathy_battery[which(long_data3$Party=="Republican")]
+                    ,long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Republican")]
+                    ,long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Republican")]
+                    ))
+
+plot_dataI<-data.frame(group=c(rep("Study 3",length(long_data3$BaseEmpathy_battery[which(long_data3$Party=="Independent")]))
+            ,rep("Study 5A & 5B",length(long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Independent")]))
+            ,rep("Pooled",length(long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Independent")])))                    ,value=c(long_data3$BaseEmpathy_battery[which(long_data3$Party=="Independent")]
+                    ,long_datapool$BaseEmpathy_battery[which(long_datapool$Party=="Independent")]
+                    ,long_datatotpool$BaseEmpathy_battery[which(long_datatotpool$Party=="Independent")]
+                    ))
+#plot
+plot_data$type<-factor(plot_data$type,levels = c("Democrat","Republican","Independent"))
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+
+plot_subempD<- ggplot(plot_dataD, aes(x=value, fill=group)) +
+    geom_histogram(aes(y = ..density..),alpha=0.5,position = 'identity',bins=20) +
+    scale_fill_viridis(begin=0,end=1,discrete=T,option="D"
+                       ,guide = guide_legend(override.aes = list(size = 0.75, alpha = 0.5) )) +
+    ylim(0,0.2) + xlab("Empathy battery") + ggtitle("Democrat")  +
+    theme_bw() + 
+    theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+    labs(fill="")
+
+plot_subempR<- ggplot(plot_dataR, aes(x=value, fill=group)) +
+    geom_histogram(aes(y = ..density..),alpha=0.5,position = 'identity',bins=20) +
+    scale_fill_viridis(begin=0,end=1,discrete=T,option="D"
+                       ,guide = guide_legend(override.aes = list(size = 0.75, alpha = 0.5) )) +
+    ylim(0,0.2) + xlab("Empathy battery") + ggtitle("Republican")  +
+    theme_bw() + 
+    theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+    labs(fill="")
+
+plot_subempI<- ggplot(plot_dataI, aes(x=value, fill=group)) +
+    geom_histogram(aes(y = ..density..),alpha=0.5,position = 'identity',bins=20) +
+    scale_fill_viridis(begin=0,end=1,discrete=T,option="D"
+                       ,guide = guide_legend(override.aes = list(size = 0.75, alpha = 0.5) )) +
+    ylim(0,0.2) + xlab("Empathy battery") + ggtitle("Independent")  +
+    theme_bw() + 
+    theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+    labs(fill="")
+    
+    
+plot_subemp<-ggarrange(plot_subempI, plot_subempR, plot_subempD,
+          ncol = 1, nrow = 3)
+#ate_subpartyemp.pdf 6x6
+
+ggarrange(plot_subparty, plot_subemp,
+          ncol = 2)
+
+#ate_subparty_full.pdf 6x6
+```
+
+### by presidential approval
+
+**Trump approval**
+
+```{r subpresapproveTrump}
+#subset data, run model, store
+long_data3T<-ate3T<-long_datapoolT<-ate5T<-long_data5T<-atetotT<-long_datatotT<-vector("list",7)
+estimate<-se<-matrix(NA,nrow=7,ncol=3) #rows are approval levels, cols are data source
+for(i in 1:7){
+  long_data3T[[i]]<-subset(long_data3,trump_approval_n==i)
+  ate3T[[i]]<-miceadds::glm.cluster( data=long_data3T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,1]<-coef(ate3T[[i]])[2]
+  se[i,1]<-summary(ate3T[[i]])[2,2]
+  long_data5T[[i]]<-subset(long_datapool,trump_approval_n==i)
+  ate5T[[i]]<-miceadds::glm.cluster( data=long_data5T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,2]<-coef(ate5T[[i]])[2]
+  se[i,2]<-summary(ate5T[[i]])[2,2]
+  long_datatotT[[i]]<-subset(long_datatotpool,trump_approval_n==i)
+  atetotT[[i]]<-miceadds::glm.cluster( data=long_datatotT[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,3]<-coef(atetotT[[i]])[2]
+  se[i,3]<-summary(atetotT[[i]])[2,2]
+}
+
+
+```
+
+```{r subpresapproveTrump plot}
+#plot data: 
+tmp_approve_levels<-c("Disapprove extremely strongly","Disapprove moderately strongly","Disapprove slightly"
+                      ,"Neither approve or disapprove","Approve slightly","Approve moderately strongly"
+                      ,"Approve extremely strongly")
+plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B", "Pooled"),each=7)
+           ,type=rep(tmp_approve_levels,times=3)
+           ,estimate=c(estimate) #column unroll
+           ,se=c(se))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = tmp_approve_levels)
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+plot_subapproveTrump<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.1,1.1) + ggtitle("by Trump approval") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subapproveTrump
+#ate_subapproveTrump.pdf 7x8
+```
+
+**Biden approval**
+
+* Only for 5A 5B
+
+```{r subpresapproveTrump}
+#subset data, run model, store
+long_datapoolT<-ate5T<-long_data5T<-atetotT<-vector("list",7)
+estimate<-se<-matrix(NA,nrow=7,ncol=2) #rows are approval levels, cols are data source
+for(i in 1:7){
+  long_data5T[[i]]<-subset(long_datapool,biden_approval_n==i)
+  ate5T[[i]]<-miceadds::glm.cluster( data=long_data5T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,1]<-coef(ate5T[[i]])[2]
+  se[i,1]<-summary(ate5T[[i]])[2,2]
+  long_datatotT[[i]]<-subset(long_datatotpool,biden_approval_n==i)
+  atetotT[[i]]<-miceadds::glm.cluster( data=long_datatotT[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,2]<-coef(atetotT[[i]])[2]
+  se[i,2]<-summary(atetotT[[i]])[2,2]
+}
+```
+
+```{r subpresapproveTrump plot}
+#plot data: 
+tmp_approve_levels<-c("Disapprove extremely strongly","Disapprove moderately strongly","Disapprove slightly"
+                      ,"Neither approve or disapprove","Approve slightly","Approve moderately strongly"
+                      ,"Approve extremely strongly")
+plot_data<-data.frame(group=rep(c("Study 5A & 5B", "Pooled"),each=7)
+           ,type=rep(tmp_approve_levels,times=2)
+           ,estimate=c(estimate) #column unroll
+           ,se=c(se))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = tmp_approve_levels)
+plot_data$group<-factor(plot_data$group,levels = c("Study 5A & 5B","Pooled"))
+plot_subapproveBiden<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=0.5,end=0.0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.0,1.5) + ggtitle("by Biden approval") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subapproveBiden
+#ate_subapproveBiden.pdf 7x7
+```
+
+
+**Combine Party, Trump Approval, Biden Approval**
+
+```{r subpolitical}
+
+#remove axis for last panel as it's the same for Trump # remove last two sets of legends as hey are also the same # set Trump/Biden plots same axis
+plot_subapproveTrump2 <- plot_subapproveTrump + theme(legend.position = "none") + ylim(-1.5,1.5)
+plot_subapproveBiden2 <- plot_subapproveBiden + theme(legend.position = "none",axis.text.y=element_blank()) + ylim(-1.5,1.5)
+ggarrange(plot_subparty, plot_subapproveTrump2, plot_subapproveBiden2,
+          ncol = 3, widths = c(1, 1.2,0.6) ) #widths of columns
+#ate_subpolitical.pdf 12x6.5
+```
+
+### by Race
+```{r subrace}
+#study 3
+
+
+
+long_data3Black<-subset(long_data3,Race=="Black or African American")
+#long_data3Hispanic<-subset(long_data3,Race=="Hispanic or Latino")
+#long_data3Native<-subset(long_data3,Race=="Native Hawaiian or Pacific Islander"|Race=="Other") #too few obs for sub
+long_data3White<-subset(long_data3,Race=="White")
+long_data3Other<-subset(long_data3,Race=="Asian"|Race=="Hispanic or Latino"|
+                          Race=="Native Hawaiian or Pacific Islander"|
+                        Race=="Other") #all bundled smaller groups
+#ate3Asian <- miceadds::glm.cluster( data=long_data3Asian, formula=describeORfeel ~ PraiseEmpathy, cluster="ID", family=binomial(link="logit"))
+#summary(ate3Asian) 
+ate3Black <- miceadds::glm.cluster( data=long_data3Black, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3Black) 
+#ate3Hispanic <- miceadds::glm.cluster( data=long_data3Hispanic, formula=describeORfeel ~ PraiseEmpathy, cluster="ID", family=binomial(link="logit"))
+#summary(ate3Hispanic) 
+#ate3Native <- miceadds::glm.cluster( data=long_data3Native, formula=describeORfeel ~ PraiseEmpathy, cluster="ID", family=binomial(link="logit"))
+#summary(ate3Native) 
+ate3White <- miceadds::glm.cluster( data=long_data3White, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3White) 
+ate3Other <- miceadds::glm.cluster(data=long_data3Other, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(ate3Other) 
+#study 5/6
+long_data5Black<-subset(long_datapool,Race=="Black or African American")
+long_data5White<-subset(long_datapool,Race=="White")
+long_data5Other<-subset(long_datapool,Race=="Asian"|Race=="Hispanic or Latino"|
+                          Race=="Native Hawaiian or Pacific Islander"|Race=="Other") #all bundled smaller groups
+#models
+ate5Black <- miceadds::glm.cluster( data=long_data5Black, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5Black) 
+ate5White <- miceadds::glm.cluster( data=long_data5White, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5White) 
+ate5Other <- miceadds::glm.cluster(data=long_data5Other, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(ate5Other) 
+
+#3,5,6
+long_datatotBlack<-subset(long_datatotpool,Race=="Black or African American")
+long_datatotWhite<-subset(long_datatotpool,Race=="White")
+long_datatotOther<-subset(long_datatotpool,Race=="Asian"|Race=="Hispanic or Latino"|
+                          Race=="Native Hawaiian or Pacific Islander"|Race=="Other")
+#models
+atetotBlack <- miceadds::glm.cluster( data=long_datatotBlack, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotBlack) 
+atetotWhite <- miceadds::glm.cluster( data=long_datatotWhite, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotWhite) 
+atetotOther <- miceadds::glm.cluster(data=long_datatotOther, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(atetotOther) 
+
+```
+
+```{r subrace plot}
+#plot data: 3, 5, pooled 
+plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=3)
+           ,type=rep(c("Black","White","Other"),times=3)
+           ,estimate=c(coef(ate3Black)[2],coef(ate3White)[2],coef(ate3Other)[2]
+                       ,coef(ate5Black)[2],coef(ate5White)[2],coef(ate5Other)[2]
+                       ,coef(atetotBlack)[2],coef(atetotWhite)[2],coef(atetotOther)[2])
+           ,se=c(summary(ate3Black)[2,2],summary(ate3White)[2,2],summary(ate3Other)[2,2]
+                 ,summary(ate5Black)[2,2],summary(ate5White)[2,2],summary(ate5Other)[2,2]
+                 ,summary(atetotBlack)[2,2],summary(atetotWhite)[2,2],summary(atetotOther)[2,2]))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = c("Black","White","Other"))
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+plot_subrace<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0.0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.6,1.3) + ggtitle("by Race") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subrace
+#ate_subrace.pdf 5x6
+```
+
+
+### by Income
+```{r subincome}
+#study 3
+#levels(long_data3$Income)
+long_data3100k<-subset(long_data3,Income=="100k or more")
+long_data375k<-subset(long_data3,Income=="75k to less than 100k")
+long_data350k<-subset(long_data3,Income=="50k to less than 75k")
+long_data325k<-subset(long_data3,Income=="25k to less than 50k")
+#long_data3less25k<-subset(long_data3,Income=="less than 25k") #no observations for less than 25k
+
+#100k or more
+ate3100k <- miceadds::glm.cluster( data=long_data3100k, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3100k) 
+#75k to less than 100k
+ate375k <- miceadds::glm.cluster( data=long_data375k, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate375k) 
+#50k to less than 75k
+ate350k <- miceadds::glm.cluster(data=long_data350k, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(ate350k) 
+#25k to less than 50k
+ate325k <- miceadds::glm.cluster(data=long_data325k, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(ate325k) 
+
+
+#study 5/6
+long_data5100k<-subset(long_datapool,Income=="100k or more")
+long_data575k<-subset(long_datapool,Income=="75k to less than 100k")
+long_data550k<-subset(long_datapool,Income=="50k to less than 75k")
+long_data525k<-subset(long_datapool,Income=="25k to less than 50k")
+#long_data5less25k<-subset(long_datapool,Income=="less than 25k")
+
+
+#models
+#100k or more
+ate5100k <- miceadds::glm.cluster( data=long_data5100k, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5100k) 
+#75k to less than 100k
+ate575k <- miceadds::glm.cluster( data=long_data575k, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate575k) 
+#50k to less than 75k
+ate550k <- miceadds::glm.cluster(data=long_data550k, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(ate550k) 
+#25k to less than 50k
+ate525k <- miceadds::glm.cluster(data=long_data525k, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(ate525k) 
+
+
+
+#3,5,6
+long_datapool100k<-subset(long_datatotpool,Income=="100k or more")
+long_datapool75k<-subset(long_datatotpool,Income=="75k to less than 100k")
+long_datapool50k<-subset(long_datatotpool,Income=="50k to less than 75k")
+long_datapool25k<-subset(long_datatotpool,Income=="25k to less than 50k")
+#long_datapoolless25k<-subset(long_datatotpool,Income=="less than 25k")
+
+
+#models
+#100k or more
+atepool100k <- miceadds::glm.cluster( data=long_datapool100k, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atepool100k) 
+#75k to less than 100k
+atepool75k <- miceadds::glm.cluster( data=long_datapool75k, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atepool75k) 
+#50k to less than 75k
+atepool50k <- miceadds::glm.cluster(data=long_datapool50k, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(atepool50k) 
+#25k to less than 50k
+atepool25k <- miceadds::glm.cluster(data=long_datapool25k, formula=describeORfeel ~ PraiseEmpathy,
+                                cluster="ID", family=binomial(link="logit"))
+summary(atepool25k) 
+
+```
+
+```{r subincome plot}
+
+#plot data: 3, 5, pooled 
+plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=4)
+           ,type=rep(c("100k or more", "75k to less than 100k", "50k to less than 75k", "25k to less than 50k"),times=3)
+           
+           ,estimate=c(coef(ate3100k)[2],coef(ate375k)[2],coef(ate350k)[2], coef(ate325k)[2]
+                       ,coef(ate5100k)[2],coef(ate575k)[2],coef(ate550k)[2], coef(ate525k)[2]
+                       ,coef(atepool100k)[2],coef(atepool75k)[2],coef(atepool50k)[2],
+                       coef(atepool25k)[2])
+           
+           ,se=c(summary(ate3100k)[2,2],summary(ate375k)[2,2],
+                 summary(ate350k)[2,2],summary(ate325k)[2,2]
+        
+                 ,summary(ate5100k)[2,2],summary(ate575k)[2,2],
+                 summary(ate550k)[2,2], summary(ate525k)[2,2]
+                 
+                 ,summary(atepool100k)[2,2],summary(atepool75k)[2,2],
+                 summary(atepool50k)[2,2],summary(atepool25k)[2,2] ))
+
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = c("100k or more", "75k to less than 100k", "50k to less than 75k", "25k to less than 50k"))
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+plot_subincome<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0.0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.6,1.3) + ggtitle("by Income") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subincome
+#ate_subincome.pdf 6x6
+```
+
+
+### by Education
+
+* Educ levels have too few observations for some categories so we aggregate for some:
+  - "Some high school, but did not graduate" and "High school or equivalent (GED)" combined to "HS"
+  - "Some college, but did not complete a degree" and "Bachelor's degree (BA/BS)" and "Associate degree" combined to "College"
+  - "Master's degree (MA/MS/MBA)" and "Medical (MD), law (JD) or other doctoral degree (PhD)" combined to "Postgrad"
+* note 5B had an extra category "no schooling completed" but since this was a single respondent we drop this category.
+
+```{r subeduc}
+#subset data, run model, store
+disagg_educ_levels<- c("Some high school, but did not graduate","High school or equivalent (GED)"
+                ,"Some college, but did not complete a degree","Associate degree"
+                ,"Bachelor's degree (BA/BS)","Master's degree (MA/MS/MBA)"
+                ,"Medical (MD), law (JD) or other doctoral degree (PhD)")
+educ_levels<-c("HS","College","Postgrad")
+long_data3T<-ate3T<-long_datapoolT<-ate5T<-long_data5T<-atetotT<-vector("list",length(educ_levels))
+estimate<-se<-matrix(NA,nrow=length(educ_levels),ncol=3) #rows are approval levels, cols are data source
+for(i in 1:length(educ_levels)){
+  if(educ_levels[i]=="HS"){
+  long_data3T[[i]]<-subset(long_data3,Education=="Some high school, but did not graduate"|
+                             Education=="High school or equivalent (GED)")
+  ate3T[[i]]<-miceadds::glm.cluster( data=long_data3T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,1]<-coef(ate3T[[i]])[2]
+  se[i,1]<-summary(ate3T[[i]])[2,2]
+  long_data5T[[i]]<-subset(long_datapool,Education=="Some high school, but did not graduate"|
+                             Education=="High school or equivalent (GED)")
+  ate5T[[i]]<-miceadds::glm.cluster( data=long_data5T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,2]<-coef(ate5T[[i]])[2]
+  se[i,2]<-summary(ate5T[[i]])[2,2]
+  long_datatotT[[i]]<-subset(long_datatotpool,Education=="Some high school, but did not graduate"|
+                             Education=="High school or equivalent (GED)")
+  atetotT[[i]]<-miceadds::glm.cluster( data=long_datatotT[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,3]<-coef(atetotT[[i]])[2]
+  se[i,3]<-summary(atetotT[[i]])[2,2]
+  }
+  if(educ_levels[i]=="College"){
+  long_data3T[[i]]<-subset(long_data3,Education=="Some college, but did not complete a degree"|
+                             Education=="Associate degree"|Education=="Bachelor's degree (BA/BS)")
+  ate3T[[i]]<-miceadds::glm.cluster( data=long_data3T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,1]<-coef(ate3T[[i]])[2]
+  se[i,1]<-summary(ate3T[[i]])[2,2]
+  long_data5T[[i]]<-subset(long_datapool,Education=="Some college, but did not complete a degree"|
+                             Education=="Associate degree"|Education=="Bachelor's degree (BA/BS)")
+  ate5T[[i]]<-miceadds::glm.cluster( data=long_data5T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,2]<-coef(ate5T[[i]])[2]
+  se[i,2]<-summary(ate5T[[i]])[2,2]
+  long_datatotT[[i]]<-subset(long_datatotpool,Education=="Some college, but did not complete a degree"|
+                             Education=="Associate degree"|Education=="Bachelor's degree (BA/BS)")
+  atetotT[[i]]<-miceadds::glm.cluster( data=long_datatotT[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,3]<-coef(atetotT[[i]])[2]
+  se[i,3]<-summary(atetotT[[i]])[2,2]
+  }else{#"Master's degree (MA/MS/MBA)" and "Medical (MD), law (JD) or other doctoral degree (PhD)"
+  long_data3T[[i]]<-subset(long_data3,Education=="Master's degree (MA/MS/MBA)"|
+                             Education=="Medical (MD), law (JD) or other doctoral degree (PhD)")
+  ate3T[[i]]<-miceadds::glm.cluster( data=long_data3T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,1]<-coef(ate3T[[i]])[2]
+  se[i,1]<-summary(ate3T[[i]])[2,2]
+  long_data5T[[i]]<-subset(long_datapool,Education=="Master's degree (MA/MS/MBA)"|
+                             Education=="Medical (MD), law (JD) or other doctoral degree (PhD)")
+  ate5T[[i]]<-miceadds::glm.cluster( data=long_data5T[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,2]<-coef(ate5T[[i]])[2]
+  se[i,2]<-summary(ate5T[[i]])[2,2]
+  long_datatotT[[i]]<-subset(long_datatotpool,Education=="Master's degree (MA/MS/MBA)"|
+                             Education=="Medical (MD), law (JD) or other doctoral degree (PhD)")
+  atetotT[[i]]<-miceadds::glm.cluster( data=long_datatotT[[i]]
+               ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
+  estimate[i,3]<-coef(atetotT[[i]])[2]
+  se[i,3]<-summary(atetotT[[i]])[2,2]    
+  }
+}
+
+
+```
+
+```{r subeduc plot}
+#plot data: 
+plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B", "Pooled"),each=length(educ_levels))
+           ,type=rep(educ_levels,times=3)
+           ,estimate=c(estimate) #column unroll
+           ,se=c(se))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = educ_levels)
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+plot_subeduc<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.1,1.1) + ggtitle("by Education") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subeduc
+#ate_subeduc.pdf 6x6
+```
+
+### by Sex
+
+```{r subsex}
+#study 3
+long_data3F<-subset(long_data3,Sex=="Female")
+long_data3M<-subset(long_data3,Sex=="Male")
+ate3F <- miceadds::glm.cluster( data=long_data3F, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3F) 
+ate3M <- miceadds::glm.cluster( data=long_data3M, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3M) 
+#study 5/6
+long_data5F<-subset(long_datapool,Sex=="Female")
+long_data5M<-subset(long_datapool,Sex=="Male")
+#models
+ate5F <- miceadds::glm.cluster( data=long_data5F, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5F) 
+ate5M <- miceadds::glm.cluster( data=long_data5M, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5M) 
+
+#3,5,6
+long_datatotF<-subset(long_datatotpool,Sex=="Female")
+long_datatotM<-subset(long_datatotpool,Sex=="Male")
+#models
+atetotF <- miceadds::glm.cluster( data=long_datatotF, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotF) 
+atetotM <- miceadds::glm.cluster( data=long_datatotM, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotM) 
+```
+
+```{r subsex plot}
+#plot data: 5, 6, pooled 
+plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=2)
+           ,type=rep(c("Female","Male"),times=3)
+           ,estimate=c(coef(ate3F)[2],coef(ate3M)[2]
+                       ,coef(ate5F)[2],coef(ate5M)[2]
+                       ,coef(atetotF)[2],coef(atetotM)[2])
+           ,se=c(summary(ate3F)[2,2],summary(ate3M)[2,2]
+                 ,summary(ate5F)[2,2],summary(ate5M)[2,2]
+                 ,summary(atetotF)[2,2],summary(atetotM)[2,2]))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = c("Female","Male"))
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+plot_subsex<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0.0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.2,0.8) + ggtitle("by Sex") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subsex
+#ate_subsex.pdf 6x6
+```
+
+
+
+### by baseline empathy
+
+**Note to self** TODO: need to do this with post-treatment adjustments (telescope matching migh be right here). Otherwise have to assume measured baseline empathy battery isn't likely to shift based on praise since the former was measured after the latter for each study.
+
+We're going to split by baseline empathy battery terciles.
+
+```{r subbaseempathy}
+#study 3
+long_data3lowemp<-subset(long_data3,BaseEmpathy_tercile=="Low")
+long_data3medemp<-subset(long_data3,BaseEmpathy_tercile=="Medium")
+long_data3highemp<-subset(long_data3,BaseEmpathy_tercile=="High")
+#models
+ate3lowemp <- miceadds::glm.cluster( data=long_data3lowemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3lowemp) 
+ate3medemp <- miceadds::glm.cluster( data=long_data3medemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3medemp) 
+ate3highemp <- miceadds::glm.cluster( data=long_data3highemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate3highemp) 
+#study 5/6
+long_data5lowemp<-subset(long_datapool,BaseEmpathy_tercile=="Low")
+long_data5medemp<-subset(long_datapool,BaseEmpathy_tercile=="Medium")
+long_data5highemp<-subset(long_datapool,BaseEmpathy_tercile=="High")
+#models
+ate5lowemp <- miceadds::glm.cluster( data=long_data5lowemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5lowemp) 
+ate5medemp <- miceadds::glm.cluster( data=long_data5medemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5medemp) 
+ate5highemp <- miceadds::glm.cluster( data=long_data5highemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(ate5highemp) 
+#all
+long_datatotlowemp<-subset(long_datatotpool,BaseEmpathy_tercile=="Low")
+long_datatotmedemp<-subset(long_datatotpool,BaseEmpathy_tercile=="Medium")
+long_datatothighemp<-subset(long_datatotpool,BaseEmpathy_tercile=="High")
+#models
+atetotlowemp <- miceadds::glm.cluster( data=long_datatotlowemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotlowemp) 
+atetotmedemp <- miceadds::glm.cluster( data=long_datatotmedemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetotmedemp) 
+atetothighemp <- miceadds::glm.cluster( data=long_datatothighemp, formula=describeORfeel ~ PraiseEmpathy,
+               cluster="ID", family=binomial(link="logit"))
+summary(atetothighemp) 
+```
+
+```{r subbaseempathy plot}
+#plot data: 5, 6, pooled 
+plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=3)
+           ,type=rep(c("Low","Medium","High"),times=3)
+           ,estimate=c(coef(ate3lowemp)[2],coef(ate3medemp)[2],coef(ate3highemp)[2]
+                       ,coef(ate5lowemp)[2],coef(ate5medemp)[2],coef(ate5highemp)[2]
+                       ,coef(atetotlowemp)[2],coef(atetotmedemp)[2],coef(atetothighemp)[2])
+           ,se=c(summary(ate3lowemp)[2,2],summary(ate3medemp)[2,2],summary(ate3highemp)[2,2]
+                 ,summary(ate5lowemp)[2,2],summary(ate5medemp)[2,2],summary(ate5highemp)[2,2]
+                 ,summary(atetotlowemp)[2,2],summary(atetotmedemp)[2,2],summary(atetothighemp)[2,2]))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = c("Low","Medium","High"))
+plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+plot_subbaseempathy<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.3,0.8) + ggtitle("by baseline empathy battery") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subbaseempathy
+#ate_subbaseempathy.pdf 6x6
+```
+
+
+**Combine Sex, Race, Education, Income, Party, Empathy**
+
+```{r subpolitical}
+
+#Plot (a): by Education, Empathy, Income
+plot_subeduc2 <- plot_subeduc + theme(legend.position = "left") + ylab ("")
+plot_subbaseempathy2 <- plot_subbaseempathy + theme(legend.position = "none") + ylab ("")
+plot_subincome2 <- plot_subincome + theme(legend.position = "none") + ylab ("")
+
+ate_subdem_a <- ggarrange(plot_subeduc2, plot_subbaseempathy2, plot_subincome2
+          ,ncol = 3, widths = c(1, 1, 1))  #widths of columns
+
+annotate_figure(ate_subdem_a, bottom = text_grob("Subgroup treatment effect estimate", 
+                                               face = "bold", size = 10))
+#ate_subdem_a.pdf 12x15
+
+#Plot (b): by Party, Race, Sex
+
+plot_subparty2 <- plot_subparty + theme(legend.position = "left") + ylab ("")
+plot_subrace2 <- plot_subrace + theme(legend.position = "none") + ylab ("")
+plot_subsex2 <- plot_subsex + theme(legend.position = "none") + ylab ("")
+
+ate_subdem_b <- ggarrange(plot_subparty2, plot_subrace2, plot_subsex2
+          ,ncol = 3, widths = c(1.1, 0.7, 0.7))  #widths of columns
+
+annotate_figure(ate_subdem_b, bottom = text_grob("Subgroup treatment effect estimate", 
+                                               face = "bold", size = 10))
+
+#ate_subdem_b.pdf 12x15              
+```
+
+
+## Potential scope conditions: 
+
+### Effects of praise not general: peer praise doesn't work on all behaviors
+
+* Praising objective behavior in the same way as praising empathy behavior (word cloud plus mean thermometer of peers) does not result in the same type of shift in behavior.
+* Pulling from Study 2 (paper=Study 3)
+
+```{r praisedescribe}
+praisedescribe <- miceadds::glm.cluster( data=long_data3, formula=describeORfeel ~ PraiseDescribe_v_Control,
+               cluster="ID", family=binomial(link="logit"))
+summary(praisedescribe) #log odds output: baseline log odds of choosing empathy task is -0.44; difference in log-odds of choosing empathy and objective tasks is 0.0755 -- peer-praised group has [log-odds to odds-ratio: exp(log-odds)] exp(0.07550607)=1.078 times the odds of choosing empathy over objective task as the control group, though this is not statistically significant (p=0.3695). [Odds ratio to %: (OR-1) * 100] Peer-praised (for describe!) group has a 7.8% greater likelihood of choosing empathy task over objective task compared to control group.
+
+```
+
+```{r praisedescribe-plot}
+plotdata<-data.frame(group=c("Control","Peer praise describe")
+                     ,coef=c(coef(praisedescribe)[1],sum(coef(praisedescribe)))
+                     ,se=c(0.09344326,0.08413839))
+plotdata$expcoef<-exp(plotdata$coef)
+plotdata$upper<-exp(plotdata$coef + qnorm(0.975)*plotdata$se)
+plotdata$lower<-exp(plotdata$coef - qnorm(0.975)*plotdata$se)
+
+
+ggplot(plotdata) +
+  geom_bar(aes(x=group, y=expcoef), stat="identity", fill=viridis(2,begin=0.25,end=0.5,direction=1,option="D", alpha=0.9)) +
+  geom_linerange( aes(x=group, ymin=lower, ymax=upper), colour="gray20", alpha=0.7, size=1) +
+  geom_text(x=1,y=0.8,label=round(plotdata$expcoef[1],3), colour="gray20",size=5) +
+  geom_text(x=2,y=0.85,label=round(plotdata$expcoef[2],3), colour="gray20",size=5) +
+  geom_text(x=1.5,y=1
+            ,label=paste("Difference: ",round(plotdata$expcoef[2]-plotdata$expcoef[1],3)," (p=0.37)",sep="")
+            ,color="gray20",size=5) +
+  ggtitle(" ") + theme_bw() + ylim(0,1) + ylab("Odds ratio choosing empathy task") + xlab(" ") +
+  theme(axis.text.x=element_text(size=12), axis.title.y=element_text(size=12))  +
+    scale_x_discrete(labels= c("Control","Peer praise objective"))
+
+#ate_praisedescribe.pdf 7x7
+```
+
+### Effects of praise not general: peer praise works better for attentive respondents
+
+* Only for studies 4, 5A, 5B, though for study 4 only for happiness and for studies 5AB for T->M-Y
+* key variables `attentionG` and `attentionMC`: which combine to `attention`; we're going to subset into attention==2 for attentive respondents, attention==1 for half attentive (scored only 1 for either the grid *or* multiple choice attention check correctly, but  not both) and attention==0 for unattentive (didn't score for either attention check).
+
+```{r subattentiveness}
+#study 5a
+attentive_long5<-subset(long_data5_new,attention==2)
+halfattentive_long5<-subset(long_data5_new,attention==1)
+unattentive_long5<-subset(long_data5_new,attention==0)
+ate_attentive5 <- miceadds::glm.cluster( data=attentive_long5
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_attentive5)
+ate_halfattentive5 <- miceadds::glm.cluster( data=halfattentive_long5
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_halfattentive5)
+ate_unattentive5 <- miceadds::glm.cluster( data=unattentive_long5
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_unattentive5)
+#study 5b
+attentive_long6<-subset(long_data6_new,attention==2)
+halfattentive_long6<-subset(long_data6_new,attention==1)
+unattentive_long6<-subset(long_data6_new,attention==0)
+ate_attentive6 <- miceadds::glm.cluster( data=attentive_long6
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_attentive6)
+ate_halfattentive6 <- miceadds::glm.cluster( data=halfattentive_long6
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_halfattentive6)
+ate_unattentive6 <- miceadds::glm.cluster( data=unattentive_long6
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_unattentive6)
+
+#pooled 5a,5b
+attentive_longpool<-subset(long_datapool,attention==2)
+halfattentive_longpool<-subset(long_datapool,attention==1)
+unattentive_longpool<-subset(long_datapool,attention==0)
+ate_attentivepool <- miceadds::glm.cluster( data=attentive_longpool
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_attentivepool)
+ate_halfattentivepool <- miceadds::glm.cluster( data=halfattentive_longpool
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_halfattentivepool)
+ate_unattentivepool <- miceadds::glm.cluster( data=unattentive_longpool
+                                         , formula=describeORfeel ~ PraiseEmpathy 
+               ,cluster="ID", family=binomial(link="logit"))
+summary(ate_unattentivepool)
+
+```
+
+```{r subattentiveness plot}
+#plot data: 5, 6, pooled 
+plot_data<-data.frame(group=rep(c("Study 5A","Study 5B","Pooled"),each=3)
+           ,type=rep(c("Attentive","Somewhat Attentive","Inattentive"),times=3)
+           ,estimate=c(coef(ate_attentive5)[2],coef(ate_halfattentive5)[2],coef(ate_unattentive5)[2]
+                       ,coef(ate_attentive6)[2],coef(ate_halfattentive6)[2],coef(ate_unattentive6)[2]
+                       ,coef(ate_attentivepool)[2],coef(ate_halfattentivepool)[2],coef(ate_unattentivepool)[2])
+           ,se=c(summary(ate_attentive5)[2,2],summary(ate_halfattentive5)[2,2],summary(ate_unattentive5)[2,2]
+                 ,summary(ate_attentive6)[2,2],summary(ate_halfattentive6)[2,2],summary(ate_unattentive6)[2,2]
+                 ,summary(ate_attentivepool)[2,2],summary(ate_halfattentivepool)[2,2],summary(ate_unattentivepool)[2,2]))
+plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
+plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
+plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
+plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#plot
+plot_data$type<-factor(plot_data$type,levels = c("Inattentive","Somewhat Attentive","Attentive"))
+plot_data$group<-factor(plot_data$group,levels = c("Study 5A","Study 5B","Pooled"))
+plot_subattentive<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
+                    position = position_dodge(width = 0.2), fatten = 1.5, size=2) +
+  geom_hline(yintercept=0,color="gray75",linetype="dashed") +
+  scale_color_viridis(#alpha=1,
+                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
+                                                                    alpha = 1) )) +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.5,1.1) + ggtitle("by Attentiveness") +
+  coord_flip() + theme_bw() + 
+  theme(legend.title = element_blank()
+        ,axis.text.y=element_text(size=12,face="bold"))
+plot_subattentive
+#ate_subattentive.pdf 6x7
+```
+
+### Effects of praise might fade over time
+
+* For study 5A
+* [In all models, `describeORfeel` is regressed over `PraiseEmpathy`, estimating the effect of praise FEEL on selecting to perform task FEEL. Each model estimates this effect for the cumulative trials, starting with 1, then 1-2, 2-3, and so on.]{color="navy"}
+```{r praisefade data}
+## ATE
+
+#subset datasets for cumulative trials
+cumulative_1<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2")
+cumulative_2<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3")
+cumulative_3<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4")
+cumulative_4<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5")
+cumulative_5<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6")
+cumulative_6<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7")
+cumulative_7<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8")
+cumulative_8<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9")
+cumulative_9<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10")
+cumulative_10<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11")
+cumulative_11<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12")
+cumulative_12<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13")
+cumulative_13<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13"| trial == "describeORfeel14")
+cumulative_14<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13"| trial == "describeORfeel14"| trial == "describeORfeel15")
+cumulative_15<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13"| trial == "describeORfeel14"| trial == "describeORfeel15"| trial == "describeORfeel16")
+cumulative_16<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13"| trial == "describeORfeel14"| trial == "describeORfeel15"| trial == "describeORfeel16"| trial == "describeORfeel17")
+cumulative_17<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13"| trial == "describeORfeel14"| trial == "describeORfeel15"| trial == "describeORfeel16"| trial == "describeORfeel17"|
+trial == "describeORfeel18")
+cumulative_18<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13"| trial == "describeORfeel14"| trial == "describeORfeel15"| trial == "describeORfeel16"| trial == "describeORfeel17"|
+trial == "describeORfeel18"| trial == "describeORfeel19")
+cumulative_19<-subset(long_data5,trial=="describeORfeel1" | trial == "describeORfeel2"| trial == "describeORfeel3"| trial == "describeORfeel4"| trial == "describeORfeel5"| trial == "describeORfeel6"| trial == "describeORfeel7"| trial == "describeORfeel8"| trial == "describeORfeel9"| trial == "describeORfeel10"| trial == "describeORfeel11"| trial == "describeORfeel12"| trial == "describeORfeel13"| trial == "describeORfeel14"| trial == "describeORfeel15"| trial == "describeORfeel16"| trial == "describeORfeel17"|
+trial == "describeORfeel18"| trial == "describeORfeel19"| trial == "describeORfeel20")
+
+tmp_data5<-data5
+tmp_data5$PraiseEmpathy<-tmp_data5$PraiseEmpathy1
+model_trial1 <- lm_robust(describeORfeel1 ~ PraiseEmpathy,data=tmp_data5)
+
+model_trial2 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_1)
+
+model_trial3 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_2)
+
+model_trial4 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_3)
+
+model_trial5 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_4)
+
+model_trial6 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_5)
+
+model_trial7 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_6)
+
+model_trial8 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_7)
+
+model_trial9 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_8)
+
+model_trial10 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_9)
+
+#summary(model_trial10)
+
+model_trial11 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_10)
+
+model_trial12 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_11)
+
+model_trial13 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_12)
+
+model_trial14 <- lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_13)
+
+model_trial15 <-lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_14)
+
+model_trial16 <-lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_15)
+
+model_trial17 <-lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_16)
+
+model_trial18 <-lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_17)
+
+model_trial19 <-lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_18)
+
+model_trial20 <-lm_robust(describeORfeel ~ PraiseEmpathy,
+               clusters = ID, data = cumulative_19)
+
+
+trial_1_tidy <- tidy(model_trial1, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1")
+
+trial_2_tidy <- tidy(model_trial2, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-2")
+
+trial_3_tidy <- tidy(model_trial3, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-3")
+trial_4_tidy <- tidy(model_trial4, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-4")
+trial_5_tidy <- tidy(model_trial5, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-5")
+trial_6_tidy <- tidy(model_trial6, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-6")
+trial_7_tidy <- tidy(model_trial7, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-7")
+trial_8_tidy <- tidy(model_trial8, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-8")
+trial_9_tidy <- tidy(model_trial9, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-9")
+trial_10_tidy <- tidy(model_trial10, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-10")
+trial_11_tidy <- tidy(model_trial11, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-11")
+trial_12_tidy <- tidy(model_trial12, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-12")
+trial_13_tidy <- tidy(model_trial13, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-13")
+trial_14_tidy <- tidy(model_trial14, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-14")
+trial_15_tidy <- tidy(model_trial15, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-15")
+trial_16_tidy <- tidy(model_trial16, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-16")
+trial_17_tidy <- tidy(model_trial17, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-17")
+trial_18_tidy <- tidy(model_trial18, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-18")
+trial_19_tidy <- tidy(model_trial19, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-19")
+trial_20_tidy <- tidy(model_trial20, conf.int = T) %>% 
+  mutate(.,
+         Model = "Trial \n 1-20")
+
+
+## ACME: AMCE and ADE changes over increasing trials
+plot_data <-data.frame(Trial=factor(paste("Trial",1:20, sep=" "),levels = paste("Trial",1:20, sep=" "))
+                       ,Estimate=NA,Low=NA,High=NA
+                       ,ACME=NA,ACME_low=NA,ACME_high=NA
+                       ,TE=NA,TE_low=NA,TE_high=NA)
+for(i in 1:length(unique(long_data5$trial_no))){
+  print(i)
+  tmp_trial <- unique(long_data5$trial_no)[i]
+  tmp_data <- subset(long_data5,trial_no <= tmp_trial & !is.na(happy))
+  happy_med <- lm(happy ~ PraiseEmpathy, data= tmp_data)
+  happy_out <- lm(describeORfeel~PraiseEmpathy + happy, data = tmp_data)
+  mediation_happy <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy"
+                              , boot=FALSE, conf.level=.95, sims=1000,cluster=tmp_data$ID)
+  summ<-summary(mediation_happy)
+  plot_data$ACME[i]<-summ$d.avg
+  plot_data$ACME_low[i]<-summ$d.avg.ci[1]
+  plot_data$ACME_high[i]<-summ$d.avg.ci[2]
+  plot_data$TE[i]<-summ$tau.coef
+  plot_data$TE_low[i]<-summ$tau.ci[1]
+  plot_data$TE_high[i]<-summ$tau.ci[2]
+}
+#long ver
+plot_data_long<-data.frame(Trial=rep(plot_data$Trial,2)
+                           ,Estimand=as.factor(c(rep("ACME",20),rep("TE",20)))
+                           #,EstimandColor=c(rep('firebrick3',20),rep('darkblue',20))
+                           ,Estimate=c(plot_data$ACME,plot_data$TE)
+                           ,Low=c(plot_data$ACME_low,plot_data$TE_low)
+                           ,High=c(plot_data$ACME_high,plot_data$TE_high))
+
+saveRDS(plot_data_long,"5A_cumplot_data_long.rds")
+```
+
+
+```{r praisefade plots}
+## ATE plot
+main_fx_trials <- rbind(trial_1_tidy,trial_2_tidy,trial_3_tidy,
+                        trial_4_tidy,trial_5_tidy,trial_6_tidy,
+                        trial_7_tidy,trial_8_tidy,trial_9_tidy,
+                        trial_10_tidy,trial_11_tidy,trial_12_tidy,
+                        trial_13_tidy,trial_14_tidy,trial_15_tidy,
+                        trial_16_tidy, trial_17_tidy, trial_18_tidy,
+                        trial_19_tidy, trial_20_tidy) %>% 
+  filter(.,
+         term == "PraiseEmpathy")
+
+order_x <- c("Trial \n 1", "Trial \n 1-2","Trial \n 1-3","Trial \n 1-4","Trial \n 1-5",
+             "Trial \n 1-6","Trial \n 1-7","Trial \n 1-8","Trial \n 1-9","Trial \n 1-10",
+             "Trial \n 1-11","Trial \n 1-12","Trial \n 1-13","Trial \n 1-14","Trial \n 1-15", "Trial \n 1-16","Trial \n 1-17","Trial \n 1-18","Trial \n 1-19","Trial \n 1-20")
+ggplot(main_fx_trials, aes(x = Model, y = estimate)) +
+  geom_hline(yintercept = 0, color = "gray50", linetype = 2, size = 0.2) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high),
+                  position = position_dodge(width = 0.4), color = 'darkblue',
+                  fill = "white") +
+  geom_text(aes(label= round(estimate, digits = 3)), hjust=-.85, vjust=-2.1, size = 1.7, color = "firebrick3",
+            family = "Times") +
+  geom_text(aes(label= paste("(",round(std.error, digits = 3), ")")), hjust=-.33, vjust=-0.5, size = 1.7, color = "firebrick3", 
+            family = "Times") +
+  #coord_flip()+
+  labs(x = "Cumulative trials",
+       y = "Estimated Effect Size") +
+  scale_x_discrete(limits= order_x) +
+  # caption = "*Coefficients from OLS models, in which outcomes are standardized."
+  theme(text = element_text(size = 10, family = "Times"),
+        legend.key=element_blank(),
+        panel.grid.major = element_blank(), 
+        axis.text.x = element_text(size = 10),
+        plot.caption = element_text(size = 10, family = "Times",hjust = -.02),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"))
+
+## ACME plot
+
+plot_data_long<-readRDS("5A_cumplot_data_long.rds")
+estimand.colors <- c(ACME = "firebrick3", TE = "darkblue")
+
+ ggplot(plot_data_long,aes(x=Trial, y=Estimate)) +
+   geom_pointrange(aes(ymin = Low, ymax = High, color=Estimand),
+                  position = position_dodge(width = 0.4)) +
+   geom_hline(yintercept = 0, color = "gray50", linetype = 2, size = 0.2) +
+   scale_color_manual(values=estimand.colors) +
+   labs(x = "Cumulative trials",
+       y = "Estimated Effect Size") +
+  theme(text = element_text(size = 10, family = "Times"),
+        legend.key=element_blank(),
+        panel.grid.major = element_blank(), 
+        axis.text.x = element_text(size = 10),
+        plot.caption = element_text(size = 10, family = "Times",hjust = -.02),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"))
+ 
+#Figures/Study 5/cum_acme_te.pdf 
+```
+
+# Appendix
+
+## Attrition
+
+
+### Study 1
+```{r attrition-s1 data}
+#select relevant questions
+attrite1<- data1[, c("consent", 
+                       "cards1", "pa", "pb_1", "pb_2", "pb_3", "pc", 
+                       "cards2", "p2a", "p2b_1", "p2b_2", "p2b_3", "p2c",
+                       "cards3",  "Aa", "Ab_1", "Ab_2", "Ab_3", "Ac",
+                       "cards4",  "Ba", "Bb_1", "Bb_2", "Bb_3", "Bc",
+                       "cards5", "Ca", "Cb_1", "Cb_2", "Cb_3", "Cc",
+                       "pair1r_1", "pair2r_1","pair3r_1", 
+                       "pair4r_1", "pair5r_1", "pair6r_1",
+                       "pair7r_1", "pair8r_1", "pair9r_1", 
+                       "pair10r_1", "pair11r_1", "pair12r_1",
+                       "Q295", "Q296_1", "Q296_2", "Q296_3", 
+                       "Q297", "post1", "post2", "post3",
+                    "post4", "post5", "post6", "post7", 
+                    "post8", "post9", "post10",
+                    "post11_1","post11_2","post11_3","post11_4",
+                    "post11_5","post11_6","post11_7","post11_8",
+                    "post13_1", "post14_1", "post15_1", "post16_1", "post17", 
+                    "age","sex","race","education",
+                    "income","religion","part_id","ideology", "state", "pres_approval"
+                    )]
+
+
+
+plot_attrition(data = attrite1
+               ,treatment = "Cc" #randomization between real and hypothetical wage tasks
+               ,DV = c(paste("cards",3:5,sep=""),paste("pair",1:12,"r_1",sep="")) #choice of deck main task, then task for real wage task.
+               ,freq = FALSE
+               )  + ylim(0,1)
+
+ggsave("Figures/attrition_1.png",  width = 11, height = 6)
+#Figures/attrition_1.pdf 11x6
+
+attrition(attrite1) #67/318
+
+```
+### Study 2
+No attrition occurred.
+
+```{r attrition-s2 data}
+#select relevant questions
+attrite2<- data2[, c("consent",
+                       "FEEL_2_1","FEEL_2_2","FEEL_2_3","FEEL_3","FEEL_4",
+                     "mf_1_1","mf_2a","mf_2b_1","mf_2b_2","mf_2b_3","mf_3_1","mf_4a","mf_4b","mf_5",
+                       "DESCRIBE_2_1","DESCRIBE_2_2","DESCRIBE_2_3","DESCRIBE_3","DESCRIBE_4",
+                     "md_1_1","md_2a","md_2b_1","md_2b_2","md_2b_3","md_3_1","md_4a","md_4b","md_5",
+                       "age","sex","race","education","income","religion","part_id","ideology")]
+
+plot_attrition(data = attrite2
+               #,treatment = 
+               #,pre_treatment = c("cards_a", "cards_b") #practice round
+               #,DV = c(paste("cards",1:15,sep=""),"task") #choice of deck main task, then task for real wage task.
+               ,freq = FALSE
+               )   + ylim(0,1)
+ggsave("Figures/attrition_2.png",  width = 11, height = 6)
+#no attrition occurred
+
+attrition(attrite2)#0
+```
+
+### Study 3
+
+```{r attrition-s3 data}
+#select relevant questions
+attrite3<- data3[, c("consent", 
+                       "cards_a", "pa", "pb_1", "pb_2", "pb_3", "pc", 
+                       "cards_b", "p2a", "p2b_1", "p2b_2", "p2b_3", "p2c",
+                     "treat1",#treatment1
+                       "cards1",  "Aa", "Ab_1", "Ab_2", "Ab_3", "Ac",
+                     "treat2",#treatment2
+                       "cards2",  "Ba", "Bb_1", "Bb_2", "Bb_3", "Bc",
+                     "treat3",#treatment3
+                       "cards3", "Ca", "Cb_1", "Cb_2", "Cb_3", "Cc",
+                     "treat4",#treatment4
+                       "cards4",  "Q415", "Q418_1", "Q418_2", "Q418_3", "Q421",
+                     "treat5",#treatment5
+                       "cards5", "Q427", "Q430_1", "Q430_2", "Q430_3", "Q433",
+                     "treat6",#treatment6
+                       "cards6", "Q436", "Q439_1", "Q439_2", "Q439_3", "Q442",
+                     "treat7",#treatment7
+                       "cards7", "Q448", "Q451_1", "Q451_2", "Q451_3", "Q454",
+                     "treat8",#treatment8
+                       "cards8", "Q460", "Q463_1", "Q463_2", "Q463_3", "Q466",
+                     "treat9",#treatment9
+                       "cards9", "Q472", "Q475_1", "Q475_2", "Q475_3", "Q478",
+                     "treat10",#treatment10
+                       "cards10", "Q484", "Q487_1", "Q487_2", "Q487_3", "Q490",
+                     "treat11",#treatment11
+                       "cards11", "Q496", "Q499_1", "Q499_2", "Q499_3", "Q502",
+                     "treat12",#treatment12
+                       "cards12", "Q508", "Q511_1", "Q511_2", "Q511_3", "Q514",
+                     "treat13",#treatment13
+                       "cards13", "Q520", "Q523_1", "Q523_2", "Q523_3", "Q526",
+                     "treat14",#treatment14
+                       "cards14", "Q532", "Q535_1", "Q535_2", "Q535_3", "Q538",
+                     "treat15",#treatment15
+                       "cards15", "Q544", "Q547_1", "Q547_2", "Q547_3", "Q550",
+                     "task",
+                       "pair1r_1", "pair2r_1","pair3r_1", 
+                       "pair4r_1", "pair5r_1", "pair6r_1",
+                       "pair7r_1", "pair8r_1", "pair9r_1", 
+                       "pair10r_1", "pair11r_1", "pair12r_1",
+                       "Q295", "Q296_1", "Q296_2", "Q296_3", 
+                       "Q297", "post1", "post2", "post3",
+                    "post4", "post5", "post6", "post7", 
+                    "post8", "post9", "post10",
+                    "post11_1","post11_2","post11_3","post11_4",
+                    "post11_5","post11_6","post11_7","post11_8",
+                    "post13_1", "post14_1", "post15_1", "post16_1", "post17", 
+                    "age","sex","race","education",
+                    "income","religion", "pres_approval",
+                    "ideology", "part_id")] #, "donation")]
+
+#create attrition dataset
+#attrition_dataset<-attrition(data = attrite3)
+
+
+plot_attrition(data = attrite3
+               ,treatment = c(paste("treat",1:15,sep="")) #praise-feel,praise-describe,control for 15 main tasks and 1 real wage task
+               ,pre_treatment = c("cards_a", "cards_b") #practice round
+               ,DV = c(paste("cards",1:15,sep=""),"task") #choice of deck main task, then task for real wage task.
+               ,freq = FALSE
+               )   + ylim(0,1)
+ggsave("Figures/attrition_3.pdf",  width = 16, height = 8)
+#Figures/attrition_3.pdf 11x6
+
+attrition(attrite3)#75/328
+```
+
+### Study 4
+
+```{r attrition-s4 data}
+#select relevant questions, only for arms we study in the manuscript for this study: "control-happiness","empathetic","objective"
+attrite4<- data4[, c("consent", "age","sex","education","state",
+                     "attention1",#"attention_grid",
+                       "cards_a", "pa", "pb_1", "pb_2", "pb_3", "pc", 
+                       "cards_b", "p2a", "p2b_1", "p2b_2", "p2b_3", "p2c",
+                     "treat16",#treatment arm
+                       "happy",#mediator
+                     "cards1",#outcome
+                      "post1", "post2_4", "post3",
+                    "post4", "post5", "post6", "post7", 
+                    "post8", "post9", "post10",
+                    "post11_1","post11_2","post11_3","post11_4",
+                    "post11_5","post11_6","post11_7","post11_8",
+                    "post13_1", "post14_1", "post15_1", "post16_1", "post17", 
+                    "race","income","religion","part_id",
+                    "ideology","pres_approval"
+                    )] #, "donation")]
+attrite4<-subset(attrite4,treat16=="happiness"|treat16=="empathetic"|treat16=="objective")
+#create attrition dataset
+#attrition_dataset<-attrition(data = attrite3)
+
+
+plot_attrition(data = attrite4
+               ,treatment = c("treat16") 
+               ,pre_treatment = c("cards_a", "cards_b") #practice round
+               ,DV = c(paste("cards",1:15,sep=""),"task") #choice of deck main task, then task for real wage task.
+               ,mediator = "happy"
+               ,freq = FALSE
+               )   + ylim(0,1)
+ggsave("Figures/attrition_4.png",  width = 11, height = 6)
+#Figures/attrition_4.pdf 11x6
+
+attrition(attrite4)#11/223
+```
+
+### Study 5A
+
+```{r attrition-s5a data}
+#select relevant questions, only for arms we study in the manuscript for this study: "control-happiness","empathetic","objective"
+attrite5A<- data5[, c("consent", "age","sex","education","state","income","part_id","race","religion",
+                     "attention",
+                       "cards_a", "pa", "pb_1", "pb_2", "pb_3", "pc", 
+                       "cards_b", "p2a", "p2b_1", "p2b_2", "p2b_3", "p2c",
+                     "treat1","happy_1","cards1",#treatment,#mediator,#outcome
+                     "treat2","happy_2","cards2",
+                     "treat3","happy_3","cards3","treat4","happy_4","cards4",
+                     "treat5","happy_5","cards5","treat6","happy_6","cards6",
+                     "treat7","happy_7","cards7","treat8","happy_8","cards8",
+                     "treat9","happy_9","cards9","treat10","happy_10","cards10",
+                     "treat11","happy_11","cards11","treat12","happy_12","cards12",
+                     "treat13","happy_13","cards13","treat14","happy_14","cards14",
+                     "treat15","happy_15","cards15","treat16","happy_16","cards16",
+                     "treat17","happy_17","cards17","treat18","happy_18","cards18",
+                     "treat19","happy_19","cards19","treat20","happy_20","cards20",
+                      "post1", "post2_7", "post3",
+                    "post4", "post5", "post6", "post7", 
+                    "post8", "post9", "post10",
+                    "post11_1","post11_2","post11_3","post11_4",
+                    "post11_5","post11_6","post11_7","post11_8",
+                    "post13_1", "post14_1", "post15_1", "post16_1", "post17", 
+                    "Ideology",
+                    "trump_approval","pres_approval"
+                    )]
+
+plot_attrition(data = attrite5A
+               ,treatment = c(paste("treat",1:20,sep="")) 
+               ,pre_treatment = c("cards_a", "cards_b") #practice round
+               ,DV = c(paste("cards",1:20,sep="")) #choice of deck main task
+               ,mediator = c(paste("happy_",1:20,sep=""))
+               ,freq = FALSE
+               )   + ylim(0,1)
+ggsave("Figures/attrition_5A.png",  width = 11, height = 6)
+#Figures/attrition_5A.pdf 11x6
+```
+
+### Study 5B
+
+```{r attrition-s5b data}
+#select relevant questions, only for arms we study in the manuscript for this study: "control-happiness","empathetic","objective"
+attrite5B<- data6[, c("consent", "age","sex","education","state","income","part_id","race","religion",
+                     "attention",
+                       "cards_a", "pa", "pb_1", "pb_2", "pb_3", "pc", 
+                       "cards_b", "p2a", "p2b_1", "p2b_2", "p2b_3", "p2c",
+                     "treat1","happy_1","cards1",#treatment,#mediator,#outcome
+                     "treat2","happy_2","cards2",
+                     "treat3","happy_3","cards3",
+                      "post1", "post2_7", "post3",
+                    "post4", "post5", "post6", "post7", 
+                    "post8", "post9", "post10",
+                    "post11_1","post11_2","post11_3","post11_4",
+                    "post11_5","post11_6","post11_7","post11_8",
+                    "post13_1", "post14_1", "post15_1", "post16_1", "post17", 
+                    "Ideology",
+                    "trump_approval","pres_approval"
+                    )]
+
+plot_attrition(data = attrite5B
+               ,treatment = c(paste("treat",1:3,sep="")) 
+               ,pre_treatment = c("cards_a", "cards_b") #practice round
+               ,DV = c(paste("cards",1:3,sep="")) #choice of deck main task
+               ,other_group = "Happy mediator"
+               ,other_group_var = c(paste("happy_",1:3,sep=""))
+               ,freq = FALSE
+               )   + ylim(0,1)
+ggsave("Figures/attrition_5B.png",  width = 11, height = 6)
+#Figures/attrition_5B.pdf 11x6
+```
+
+## Mediation sensitivity analysis
+
+### Sensitivity analysis for Sequential Ignorability Assumption
+
+We analyze the mediating effect of happiness on the choice task variable using Imai et al. 2010 approach for model-based causal mediation analysis; the key assumption required is sequential ignorability.
+
+Specify 2 statistical models:
+1) mediator model for the conditional distribution of the mediator $M_i$ given treatment $T_i$ and a set of the observed pre-treatment covariates $X_i$ and 
+2) outcome model for the conditional distribution of the outcome $Y_i|T_i,M_i,X_i$T
+
+Fit 1) and 2) separately. The fitted objects are main inputs to the `mediate` fn, which computes the estimated ACME and other quantities of interest under these models and the sequential ignorability assumption.
+
+We're going to control for X. All confidence interval estimators are estimated with clustered standard errors at the respondent ID level.
+
+* Conduct a sensitivity analysis for the possible existence of unobserved pre-treatment covariates.
+* Sensitivity parameter $\rho\equiv \text{Corr}(\epsilon_{i2},\epsilon_{i3})$; sequential ignorability implies $\rho=0$. We set $\rho$ at different values and see how our ACME changes.
+* Studies 5A, 5B; pooled
+
+```{r sensitivityestim, eval=FALSE}
+## medsens seems to have trouble (can't estimate logit link), and probit link doesn't have an easy pull of the Mmodel.var.cov from out object so using lpm 
+set.seed(32021)
+nsims=1000
+
+##5A
+happy_med <- lm(happy ~ PraiseEmpathy, data=long_data5_new)
+happy_out <- lm(describeORfeel~PraiseEmpathy + happy, data = long_data5_new)#, family=binomial(link="probit"))
+
+#note that we cannot run boot=TRUE with clustering
+mediation_happy5_lm <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.95, sims=nsims,cluster=long_data5_new$ID)
+saveRDS(mediation_happy5_lm, file="mediation_happy5_lm.rds")
+
+mediation_happy5_lm<-readRDS(file="mediation_happy5_lm.rds")
+sens_out5 <- medsens(mediation_happy5_lm, rho.by = 0.01, effect.type = "indirect", sims = nsims)#vary rho values to
+saveRDS(sens_out5,file="sens_out5.rds")
+
+
+##5B
+happy_med <- lm(happy ~ PraiseEmpathy, data=long_data6_new)
+happy_out <- lm(describeORfeel~PraiseEmpathy + happy, data = long_data6_new)#, family=binomial(link="probit"))
+
+#note that we cannot run boot=TRUE with clustering
+mediation_happy6_lm <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.95, sims=nsims,cluster=long_data6_new$ID)
+saveRDS(mediation_happy6_lm, file="mediation_happy6_lm.rds")
+
+mediation_happy6_lm<-readRDS(file="mediation_happy6_lm.rds")
+sens_out6 <- medsens(mediation_happy6_lm, rho.by = 0.01, effect.type = "indirect", sims = nsims)#vary rho values to
+saveRDS(sens_out6,file="sens_out6.rds")
+
+
+##combined
+happy_med <- lm(happy ~ PraiseEmpathy, data=long_datapool)
+happy_out <- lm(describeORfeel~PraiseEmpathy + happy, data = long_datapool)#, family=binomial(link="probit"))
+
+#note that we cannot run boot=TRUE with clustering
+mediation_happytot_lm <-  mediate(happy_med, happy_out, treat = "PraiseEmpathy", mediator = "happy", boot=FALSE, conf.level=.95, sims=nsims,cluster=long_datapool$ID)
+saveRDS(mediation_happytot_lm, file="mediation_happytot_lm.rds")
+
+mediation_happytot_lm<-readRDS(file="mediation_happytot_lm.rds")
+sens_outtot <- medsens(mediation_happytot_lm, rho.by = 0.01, effect.type = "indirect", sims = nsims)#vary rho values to
+saveRDS(sens_outtot,file="sens_outtot.rds")
+```
+
+
+```{r sensitivity-analysis}
+sens_out5<-readRDS(file="sens_out5.rds")
+summary(sens_out5)
+sens_out6<-readRDS(file="sens_out6.rds")
+summary(sens_out6)
+sens_outtot<-readRDS(file="sens_outtot.rds")
+summary(sens_outtot)
+```
+
+For Study 5A, when $\rho$ is around 0.11 the ACME becomes 0; for 5B, when $\rho$ is around 0.12 the ACME becomes 0. Pooled = 0.12
+
+We interpret sensitivity with $R^2$s below. Assume the standard estimation models for Mediator/Outcome:
+
+$Y_i=\alpha_1 + \beta_1 T_i + \epsilon_{i1}$
+$M_i=\alpha_2 + \beta_2 T_i + \epsilon_{i2}$
+$Y_i=\alpha_3 + \beta_3 T_i + \gamma M_i + \epsilon_{i3}$
+
+Assume the unobserved (pre-treatment) confounder formulation
+
+$\epsilon_{i2} = \lambda_2 U_i + \epsilon'_{i2}$
+and
+$\epsilon_{i3} = \lambda_3 U_i + \epsilon'_{i3}$
+
+How much does $U_i$ have to explain for our results to go away?
+
+```{r sensitivity-plot}
+plot(sens_out5, sens.par = "rho", main = "Sensitivity Analysis (5A)", ylim = c(-0.2, 0.2),xlim=c(-0.5,0.5))
+#Figures/sensitivity-rho5.pdf 6x6
+plot(sens_out6, sens.par = "rho", main = "Sensitivity Analysis (5B)", ylim = c(-0.2, 0.2),xlim=c(-0.5,0.5))
+#Figures/sensitivity-rho6.pdf 6x6
+plot(sens_outtot, sens.par = "rho", main = "Sensitivity Analysis (5 pooled)", ylim = c(-0.2, 0.2),xlim=c(-0.5,0.5))
+#Figures/sensitivity-rhotot.pdf 6x6
+```
+
+The last plot is plotting the proportion of original variance explained by $U_i$:
+
+$\tilde{R}^2_M \equiv \frac{var(\epsilon_{i2}) - var(\epsilon'_{i2})}{var(M_i)}$
+and
+$\tilde{R}^2_Y \equiv \frac{var(\epsilon_{i3}) - var(\epsilon'_{i3})}{var(Y_i)}$
+
+Reparameterize $\rho$ using $(\tilde{R}^2_M,\tilde{R}^2_Y)$:
+$\rho = \frac{\text{sgn}(\lambda_2\lambda_3)\tilde{R}_M\tilde{R}_Y}{\sqrt{(1-\tilde{R}^2_M)(1-\tilde{R}^2_Y)}}$
+where $R^2_M$ and $R^2_Y$ are from the original mediator/outcome models. We can set $(\tilde{R}^2_M,\tilde{R}^2_Y)$ to different values and see how mediation effects change.
+
+The plot below assumes that the confounder influences both the mediator and outcome variables in the same direction. (This matters because the sensitivity analysis is in terms of the product of $R^2$ statistics; I'm assuming positive because it seems more likely that something positively affecting the Mediator and the Outcome is happening to create the positive finding for the ACME). The bold line represents the various combinations of $R^2$ statistics where the ACME would be 0. In this case the product would have to be 0.01 for the ACME to become 0 for 5A and also for 5B (POOLED=0.014). Another way to say this is that when the product of the original variance explained by the omitted confounding is 0.01 (for both 5A and 5B; POOLED=0.014), the point estimate for ACME would be 0.
+
+```{r sensitivity-plot-confound}
+plot(sens_out5, sens.par = "R2", r.type = "total", main = "Sensitivity Analysis (5A) ", ylim = c(0,.9),xlim=c(0,1),
+     sign.prod="positive",
+     xlab="Proportion of Total Variance in Happy\n Explained by Confounder",
+     ylab="Proportion of Total Variance in choosing empathy task\n Explained by Confounder") # assume confounder influences both mediator/outcome variables in same direction
+#Figures/sensitivity-confound5.pdf 6x6
+plot(sens_out6, sens.par = "R2", r.type = "total", main = "Sensitivity Analysis (5B)", ylim = c(0,.9),xlim=c(0,1),
+     sign.prod="positive",
+     xlab="Proportion of Total Variance in Happy\n Explained by Confounder",
+     ylab="Proportion of Total Variance in choosing empathy task\n Explained by Confounder") # assume confounder influences both mediator/outcome variables in same direction
+#Figures/sensitivity-confound6.pdf 6x6
+
+plot(sens_outtot, sens.par = "R2", r.type = "total", main = "Sensitivity Analysis (5 pooled)", ylim = c(0,.9),xlim=c(0,1),
+     sign.prod="positive",
+     xlab="Proportion of Total Variance in Happy\n Explained by Confounder",
+     ylab="Proportion of Total Variance in choosing empathy task\n Explained by Confounder") # assume confounder influences both mediator/outcome variables in same direction
+#Figures/sensitivity-confoundtot.pdf 6x6
+```
+
+
+## Anxiety: do people become more anxious after they choose the empathy task?
+
+
+* This refers to study 3B (called Study 3 in overleaf original timeline -- which explored the real wage task further and added emotion variables pre and post at random). We'll be conducting the following tests:
+
+- (1) difference between `anxiety` and `anxiety_post` (`anxiety_diff`: `anxiety` - `anxiety_post) control group respondents who chose the FEEL task each time with the respondents who chose the DESCRIBE task each time. with controls. If respondents become more anxious after choosing the empathy task then we should see that their `anxiety_diff` values should be higher than their colleagues who chose the objective task each time. **no evidence found for this**
+- (2) `anxiety_diff` for respondents who received `PraiseEmpathy` and then chose FEEL with respondents who received `Control` and then chose FEEL. with controls. If respondents alleviate anxiety of empathy through peer praise, we should see the first group have higher `anxiety_diff` values compared to the second group (starting values of anxiety higher than ending values).
+
+```{r}
+data3B<-readRDS(file="../Data/Survey Data/Study 3/clean_data_study3.rds")
+
+#create additional dataset for respondents who answered FEEL in task1 AND in the real task
+only_feel <- subset(data3B, #describeORfeel1==1 & 
+                      describeORfeel2==1)
+#respondents who answered FEEL in the real task
+only_feelreal<-subset(data3B, describeORfeel2==1)
+#respondents who answered DESCRIBE in the real task
+only_describereal<-subset(data3B, describeORfeel2==0)
+#respondents in only control for the real task
+only_control <- subset(data3B, PraiseEmpathy16==0)
+only_control$AlwaysChooseFeel<-ifelse(only_control$describeORfeel1==1&only_control$describeORfeel2==1,1,0)
+only_control$AlwaysChooseDescribe<-ifelse(only_control$describeORfeel1==0&only_control$describeORfeel2==0,1,0)
+only_control$AlwaysChooseFeel_vs_AlwaysChooseDescribe<-ifelse(only_control$AlwaysChooseFeel==1,1,ifelse(only_control$AlwaysChooseDescribe==1,0,NA))
+
+## (1)
+## do people become more anxious after choosing empathy? compare people in the control group (never received praise) who choose feel always against people in control group who choose describe always and see if anxiety higher in the former group. observational so control for gender, age, educ, race, party.
+anx1<-lm(anxiety_diff ~ AlwaysChooseFeel_vs_AlwaysChooseDescribe + Sex + Age + Education + Race + Party, data = only_control)
+coeftest(anx1, vcov = vcovHC, type = "HC1")
+anx1_2<-lm(anxiety_post ~ anxiety + AlwaysChooseFeel_vs_AlwaysChooseDescribe + Sex + Age + Education + Race + Party, data = only_control)
+#coeftest(anx1_2, vcov = vcovHC, type = "HC1")
+#doesn't seem like people get more anxious if they choose empathy vs objective
+
+latex_table<-data.frame(Coefficient=c("Intercept","Choose Empathy over Objective")
+              ,Estimate=round(c(coeftest(anx1, vcov = vcovHC, type = "HC1")[1,1],coeftest(anx1, vcov =vcovHC,type= "HC1")[2,1]),4)
+              ,SE=round(c(coeftest(anx1, vcov = vcovHC, type = "HC1")[1,2],coeftest(anx1, vcov =vcovHC,type= "HC1")[2,2]),4)
+              ,p=round(c(coeftest(anx1, vcov = vcovHC, type = "HC1")[1,4],coeftest(anx1, vcov =vcovHC,type= "HC1")[2,4]),4))
+
+#LaTeX table
+kable(latex_table, booktabs = T, caption = "Change in anxiety after choosing Empathy or Objective",label="anxiety1" ,"latex"
+      ,col.names = c("","Estimate","s.e.","p"))%>% 
+  kable_styling(latex_options = c("striped", "scale_down"),position = "center",font_size=12)%>%#, "scale_down"
+  row_spec(0, bold = T) %>%
+  column_spec(1, bold = T, color = "black", width="4cm") %>%
+  column_spec(2, width = "2cm")%>% #est
+  column_spec(3, width = "2cm")%>% #se
+  column_spec(4, width = "2cm") #p
+
+## (2)
+## `anxiety_diff` for respondents who received `PraiseEmpathy` and then chose FEEL with respondents who received `Control` and then chose FEEL. with controls. If respondents alleviate anxiety of empathy through peer praise, we should see the first group have higher `anxiety_diff` values compared to the second group (starting values of anxiety higher than ending values). with controls.
+anx2<-lm(anxiety_diff ~ PraiseEmpathy16 + Sex + Age + Education + Race + Party, data = only_feel)
+coeftest(anx2, vcov = vcovHC, type = "HC1")
+# no evidence of this at work
+
+latex_table2<-data.frame(Coefficient=c("Intercept","Peer praise")
+              ,Estimate=round(c(coeftest(anx2, vcov = vcovHC, type = "HC1")[1,1],coeftest(anx2, vcov =vcovHC,type= "HC1")[2,1]),4)
+              ,SE=round(c(coeftest(anx2, vcov = vcovHC, type = "HC1")[1,2],coeftest(anx2, vcov =vcovHC,type= "HC1")[2,2]),4)
+              ,p=round(c(coeftest(anx2, vcov = vcovHC, type = "HC1")[1,4],coeftest(anx2, vcov =vcovHC,type= "HC1")[2,4]),4))
+
+#LaTeX table
+kable(latex_table2, booktabs = T, caption = "Change in anxiety after peer praise for empathy",label="anxiety2" ,"latex"
+      ,col.names = c("","Estimate","s.e.","p"))%>% 
+  kable_styling(latex_options = c("striped", "scale_down"),position = "center",font_size=12)%>%#, "scale_down"
+  row_spec(0, bold = T) %>%
+  column_spec(1, bold = T, color = "black", width="4cm") %>%
+  column_spec(2, width = "2cm")%>% #est
+  column_spec(3, width = "2cm")%>% #se
+  column_spec(4, width = "2cm") #p
+```
+
+
+## Responding to peer praise but shortcutting on FEEL job?
+
+Are people who we "praise into empathy" doing a less good job? Compare FEEL responses under control to FEEL responses under praise. Use sentiment analysis and duration data. We'll use Study 3 data.
+
+```{r}
+# Set up data
+#combine text answers in long data form
+long_data3$text<- paste(long_data3$text1, long_data3$text2, 
+                          long_data3$text3, long_data3$text4, sep=" ")
+#subset only FEEL responses
+long_data3_FEEL <- subset(long_data3, describeORfeel == 1)
+
+#create corpus
+write.csv(long_data3_FEEL, "../Data/Survey Data/Across Studies/long_data3_FEEL.csv")
+data_text_long <-readtext("../Data/Survey Data/Across Studies/long_data3_FEEL.csv", text_field = c("text"))
+
+data_text_corpus <- corpus (data_text_long)
+data_text_corpus<-tokens(data_text_corpus, remove_punct = TRUE)
+data_text_corpus<-tokens_select(data_text_corpus, pattern = stopwords("en"), selection = "remove")
+data_text_corpus <- tokens_wordstem(data_text_corpus)
+data_text_corpus <- tokens_tolower(data_text_corpus)
+
+#save unique tokens in data_FEEL for test 1 using ntype()
+long_data3_FEEL$unique_tokens<-ntype(data_text_corpus)
+
+#get 50 words from praise-feel wordcloud
+feel_dfm <- readRDS(file="../Data/Survey Data/Study 0/feel_dfm.rds")
+cloud_PraiseFeel <- dfm_select(feel_dfm, names(topfeatures(feel_dfm, n = 50)))
+cloud_PraiseFeel <- featnames(cloud_PraiseFeel)
+
+#percentage of cloud words from answer (per respondent)
+
+lemma <- rep("cloudword", length(cloud_PraiseFeel))
+toks2 <- tokens_replace(data_text_corpus, cloud_PraiseFeel, lemma, valuetype = "fixed") #change relevant words to "cloudword"
+toks2_dfm<-dfm(toks2)
+toks2_dfm<-convert(toks2_dfm, to = "data.frame")
+toks2_dfm$doc_id<-NULL
+toks2_dfm$sum=rowSums(cbind(toks2_dfm))
+toks2_dfm$cloudword_proportion<-as.numeric(toks2_dfm$cloudword)/toks2_dfm$sum
+
+#save cloudword_proportion in long_data3_FEEL for test 2
+long_data3_FEEL$cloudword_proportion<-toks2_dfm$cloudword_proportion
+
+#sentiment of the words
+long_data3_FEEL$text_sentiment<-analyzeSentiment(long_data3_FEEL$text)$SentimentQDAP
+
+#**Test 1**
+
+#We check if respondents who chose FEEL under praise-feel treatment are more likely to use more diverse (unique) words than respondents who chose FEEL under the control treatment
+
+shortcut1 <- miceadds::lm.cluster( data=long_data3_FEEL, formula=unique_tokens ~ PraiseEmpathy,
+               cluster="ID" )
+summary(shortcut1)
+
+#no evidence of using fewer unique words
+
+#**Test 2**
+
+#We check if respondents who chose FEEL under praise-feel treatment are more likely to use words from the Praise-Feel wordcloud than respondents who chose FEEL under the control treatment
+
+shortcut2 <- miceadds::lm.cluster(data=long_data3_FEEL, formula=cloudword_proportion ~ PraiseEmpathy,cluster="ID" )
+summary(shortcut2)
+
+#no evidence of relying on praise-feel wordcloud to shortcut
+
+#**Test 3** 
+
+#Check if sentiment of words is more negative in the peer-praise to feel than the control to feel groups -- suggesting not actually empathizing.
+
+shortcut3 <- miceadds::lm.cluster(data=long_data3_FEEL, formula=text_sentiment ~ PraiseEmpathy,cluster="ID" )
+summary(shortcut3)
+
+#no evidence of using different sentiments in words to shortcut
+latex_table<-cbind(summary(shortcut1),summary(shortcut2),summary(shortcut3)) 
+latex_table<-latex_table[,c(-3,-7,-11)]#remove t val cols
+latex_table[,c(1,2,4,5,7,8)]<-round(latex_table[,c(1,2,4,5,7,8)],3)#est,se
+latex_table[,c(3,6,9)]<-signif(latex_table[,c(3,6,9)], digits = 3)#p
+latex_table<-cbind(c("Intercept","Peer praise"),latex_table)
+rownames(latex_table)<-NULL
+#LaTeX table
+kable(latex_table, booktabs = T, caption = "Testing for shortcutting.",label="shortcut" ,"latex"
+      ,col.names = c("",rep(c("Estimate","s.e.","p"),3)))%>% 
+  kable_styling(latex_options = c("striped", "scale_down"),position = "center",font_size=12)%>%#, "scale_down"
+  add_header_above(c(" " = 1, "DV: Unique tokens" = 3, "DV: Proportion of wordcloud" = 3, "DV: Text sentiment" = 3)) %>%
+  row_spec(0, bold = T) %>%
+  column_spec(1, bold = T, color = "black", width="3cm") %>%
+  column_spec(2:10, width = "2cm")#%>% #est
+
+```

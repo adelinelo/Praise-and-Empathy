@@ -1,0 +1,2 @@
+load("/Users/lotembassan/Dropbox/Praise-and-Empathy/Data/Survey Data/Study 0/clean_data.rds")
+load("/Users/lotembassan/Dropbox/Praise-and-Empathy/Data/Survey Data/Study 0/feel_dfm.rds")
