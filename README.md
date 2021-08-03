@@ -19,6 +19,7 @@ Includes all necessary data to replicate studies 1-5 in .rds form.
 Includes all necessary code to replicate analyses.
 
 * Analysis file `Across_study.Rmd`
+* R functions `R_fns.R`
 
 ## Papers folder
 
