@@ -77,19 +77,19 @@ pacman::p_load(here,Hmisc,dplyr,gridExtra,grid,stargazer,hrbrthemes,quanteda,rea
 
 # JOP Registered Study: peer praise effect on inclusion towards racial/ethnic outgroups
 
-Here we conduct power calculations for the effects of **Peer Praise** on following outcomes (all for where the target is an outgroup member; we are focusing on a White American receiving peer praise versus control):
+Here we conduct power calculations for the effects of **Peer Praise** on the following six outcomes. In the following hypotheses, the respondent is restricted to White Americans. For the Behavioral Empathy Task, the target (face) is an outgroup member.
 
-* (**H1 DV Behavioral Empathy Task**) Measure the effect of the treatment (praise) on the behavioral empathy task (choosing the FEEL task), when target is an outgroup member.
+* **H1 DV Behavioral Empathy Task**: the effect of the treatment (praise) on the behavioral empathy task (choosing the FEEL task), when target is an outgroup member.
 
-* (**H2 DV Self-reported Empathy**)  Measure if the effect of treatment (praise) on the outcome (reporting feeling empathy for racial/ethnic outgroups), when target is an outgroup member.
+* **H2 DV Self-reported Empathy**:  the effect of treatment (praise) on the outcome (reporting feeling empathy for racial/ethnic outgroups), when target is an outgroup member.
 
-* (**H3 DV Donate**)  Measure if the effect of treatment (praise) on the outcome (donate bonus amount), when target is an outgroup member.
+* **H3 DV Donate**: the effect of treatment (praise) on the outcome (donate bonus amount), when target is an outgroup member.
 
-* (**H4 DV Letter**)  Measure if the effect of treatment (praise) on the outcome (write supportive letter), when target is an outgroup member.
+* **H4 DV Letter**: the effect of treatment (praise) on the outcome (write supportive letter), when target is an outgroup member.
 
-* (**H5 DV Social Distance**)  Measure if the effect of treatment (praise) on the outcome (social distance scale), when target is an outgroup member.
+* **H5 DV Social Distance**: the effect of treatment (praise) on the outcome (social distance scale), when target is an outgroup member.
 
-* (**H6 DV Thermometer**)  Measure if the effect of treatment (praise) on the outcome (thermometer rating), when target is an outgroup member.
+* **H6 DV Thermometer**: the effect of treatment (praise) on the outcome (thermometer rating), when target is an outgroup member.
 
 ##  Assumptions
 
@@ -100,13 +100,13 @@ Here we make several key assumptions for our simulations: 1) effect sizes for pe
 \begin{enumerate}
 \item For H1, we take effect and sd information from Pilot Study 6, which similarly utilized peer praise on the behavioral choice outcome. 
 \item For H2 Self reported empathy, as we do not have a piloted peer praise study to directly look for effect sizes, we look at findings from Williamson et al. 2021, which had a similar self-reported empathy outcome but utilized a family history perspective as its intervention.
-\item For H3 similarly, we use the same study, from Williamson et al. 2021, and borrow from their outcome of expressed support for more open policies; as we expect donation might be harder to move on than support for policies, we reduce by 75% the treatment effect size from the study (and conservatively keep the same sd).
+\item For H3 similarly, we use the same study, from Williamson et al. 2021, and borrow from their outcome of expressed support for more open policies. Because we expect donation behavior might be harder to "move" than expressed support for policies, we conservatively reduce by 75\% the treatment effect size from the study (and conservatively keep the same sd) for our assumed treatment effect size.
 \item For H4 Letter we look at a similar tested outcome from Adida Lo Platas 2018 Table S1---a letter to the White House---and utilize the same treatment effect sizes and sds. 
-\item For H5 Social distance scores we do not have an equivalent study to lean on for priors on effect sizes, so we assume an increment of 0.1 rank move with a similar sized sd.
+\item For H5 Social distance scores we do not have an equivalent study to lean on for priors on effect sizes, so we assume a conservative increment of 0.1 rank move (in a 0-6 rank scale) with a similar sized sd.
 \item For H6 Thermometer, we also turn to similar tested outcomes from Adida Lo Platas 2018 Table S1 -- a thermometer towards an outgroup (though in this case refugees) and use the same treatment effect size and sds estimated.
 \end{enumerate}
 
-We calculate wages and time as well, using the highest min wage in 2022 (California) $15/hr.
+Calculations below also incorporate wages and time taken. For wages, we use the highest min wage in 2022 (California) $15/hr.
 
 Finally we keep track of our 6 hypotheses in this peer praise on outgroup section for MH adjustments later.
 

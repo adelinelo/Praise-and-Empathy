@@ -1,0 +1,489 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Power calculations JOP submission},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Power calculations JOP submission}
+\author{}
+\date{\vspace{-2.5em}This version: June 2023}
+
+\begin{document}
+\maketitle
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{rm}\NormalTok{(}\AttributeTok{list=}\FunctionTok{ls}\NormalTok{())}
+\NormalTok{pacman}\SpecialCharTok{::}\FunctionTok{p\_load}\NormalTok{(here,Hmisc,dplyr,gridExtra,grid,stargazer,hrbrthemes,quanteda,readtext}
+\NormalTok{               ,tidyverse,knitr,papeR,tidyr,kableExtra,ggpubr,printr,tab,lfe,sjPlot}
+\NormalTok{               ,clusterSEs,BBmisc,miceadds,mediation,estimatr,sensemakr,SentimentAnalysis}
+\NormalTok{               ,ggplot2,ggridges,viridis,randomizr,doParallel,sandwich,ggplot2,reshape2}
+\NormalTok{               ,kableExtra,ggpattern)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{jop-registered-study-peer-praise-effect-on-inclusion-towards-racialethnic-outgroups}{%
+\section{JOP Registered Study: peer praise effect on inclusion towards
+racial/ethnic
+outgroups}\label{jop-registered-study-peer-praise-effect-on-inclusion-towards-racialethnic-outgroups}}
+
+Here we conduct power calculations for the effects of \textbf{Peer
+Praise} on the following six outcomes. In the following hypotheses, the
+respondent is restricted to White Americans. For the Behavioral Empathy
+Task, the target (face) is an outgroup member.
+
+\begin{itemize}
+\item
+  \textbf{H1 DV Behavioral Empathy Task}: the effect of the treatment
+  (praise) on the behavioral empathy task (choosing the FEEL task), when
+  target is an outgroup member.
+\item
+  \textbf{H2 DV Self-reported Empathy}: the effect of treatment (praise)
+  on the outcome (reporting feeling empathy for racial/ethnic
+  outgroups), when target is an outgroup member.
+\item
+  \textbf{H3 DV Donate}: the effect of treatment (praise) on the outcome
+  (donate bonus amount), when target is an outgroup member.
+\item
+  \textbf{H4 DV Letter}: the effect of treatment (praise) on the outcome
+  (write supportive letter), when target is an outgroup member.
+\item
+  \textbf{H5 DV Social Distance}: the effect of treatment (praise) on
+  the outcome (social distance scale), when target is an outgroup
+  member.
+\item
+  \textbf{H6 DV Thermometer}: the effect of treatment (praise) on the
+  outcome (thermometer rating), when target is an outgroup member.
+\end{itemize}
+
+\hypertarget{assumptions}{%
+\subsection{Assumptions}\label{assumptions}}
+
+Power calculations require two main inputs: estimates of effects sizes
+and standard deviations. Below, we detail where our estimates for those
+parameters come from. Whenever possible, we use information from our
+extensive series of pilots for these values. Where that's not possible,
+we base our estimates on studies that are as similar to ours as possible
+along key dimensions (for example, in using the same dependent measure).
+The table below highlights the source for these values that are
+subsequently used in the power calculations.
+
+Here we make several key assumptions for our simulations: 1) effect
+sizes for peer praise on the six outcome DVs for outgroup members and 2)
+their standard deviations.
+
+\begin{enumerate}
+\item For H1, we take effect and sd information from Pilot Study 6, which similarly utilized peer praise on the behavioral choice outcome. 
+\item For H2 Self reported empathy, as we do not have a piloted peer praise study to directly look for effect sizes, we look at findings from Williamson et al. 2021, which had a similar self-reported empathy outcome but utilized a family history perspective as its intervention.
+\item For H3 similarly, we use the same study, from Williamson et al. 2021, and borrow from their outcome of expressed support for more open policies. Because we expect donation behavior might be harder to "move" than expressed support for policies, we conservatively reduce by 75\% the treatment effect size from the study (and conservatively keep the same sd) for our assumed treatment effect size.
+\item For H4 Letter we look at a similar tested outcome from Adida Lo Platas 2018 Table S1---a letter to the White House---and utilize the same treatment effect sizes and sds. 
+\item For H5 Social distance scores we do not have an equivalent study to lean on for priors on effect sizes, so we assume a conservative increment of 0.1 rank move (in a 0-6 rank scale) with a similar sized sd.
+\item For H6 Thermometer, we also turn to similar tested outcomes from Adida Lo Platas 2018 Table S1 -- a thermometer towards an outgroup (though in this case refugees) and use the same treatment effect size and sds estimated.
+\end{enumerate}
+
+Calculations below also incorporate wages and time taken. For wages, we
+use the highest min wage in 2022 (California) \$15/hr.
+
+Finally we keep track of our 6 hypotheses in this peer praise on
+outgroup section for MH adjustments later.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\CommentTok{\# n sizes we simulate through}
+\NormalTok{possible.ns }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{seq}\NormalTok{(}\AttributeTok{from=}\DecValTok{100}\NormalTok{, }\AttributeTok{to=}\DecValTok{800}\NormalTok{, }\AttributeTok{by=}\DecValTok{50}\NormalTok{))}
+\CommentTok{\# n of trials (here we do only 1)}
+\NormalTok{n\_trials}\OtherTok{\textless{}{-}}\FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{)}
+\NormalTok{n\_k}\OtherTok{\textless{}{-}}\FunctionTok{expand.grid}\NormalTok{(possible.ns,n\_trials)}
+\FunctionTok{names}\NormalTok{(n\_k)}\OtherTok{\textless{}{-}}\FunctionTok{c}\NormalTok{(}\StringTok{"N"}\NormalTok{,}\StringTok{"K"}\NormalTok{)}
+\CommentTok{\# we calculate time to take study and pay}
+\NormalTok{n\_k}\SpecialCharTok{$}\NormalTok{time}\OtherTok{\textless{}{-}}\DecValTok{8}\SpecialCharTok{+}\NormalTok{(n\_k}\SpecialCharTok{$}\NormalTok{K}\SpecialCharTok{*}\FloatTok{1.0}\NormalTok{)}
+\NormalTok{n\_k}\SpecialCharTok{$}\NormalTok{pay}\OtherTok{\textless{}{-}}\NormalTok{(((n\_k}\SpecialCharTok{$}\NormalTok{time}\SpecialCharTok{/}\DecValTok{60}\NormalTok{)}\SpecialCharTok{*}\DecValTok{15}\NormalTok{)}\SpecialCharTok{+}\DecValTok{1}\NormalTok{)}\SpecialCharTok{*}\NormalTok{n\_k}\SpecialCharTok{$}\NormalTok{N }
+\CommentTok{\# alpha level, sims set, number of hypotheses to adjust}
+\NormalTok{alpha }\OtherTok{\textless{}{-}} \FloatTok{0.05}
+\NormalTok{sims }\OtherTok{\textless{}{-}} \DecValTok{1000}
+\NormalTok{n.hyp }\OtherTok{=} \DecValTok{6}
+
+\CommentTok{\# Population assumptions for respondents }
+\CommentTok{\# based on prior proportions in pilots}
+  \CommentTok{\#proportion of White, proportion of Black in sample}
+  \CommentTok{\#mean(c(61.3,70.4,54.9,70, 64.5,72.9)) White}
+\NormalTok{  prop\_white}\OtherTok{\textless{}{-}}\DecValTok{66}
+  \CommentTok{\#mean(c(10.4,13,14.6,13,22.2,15.4))}
+\NormalTok{  prop\_black}\OtherTok{\textless{}{-}}\DecValTok{15}
+
+\CommentTok{\# Effects: treatment main effects for each of H1{-}H6}
+\NormalTok{  sds}\OtherTok{\textless{}{-}}\FunctionTok{rep}\NormalTok{(}\ConstantTok{NA}\NormalTok{,n.hyp)}
+  \CommentTok{\#H1: effect and sd information from Pilot Study 6}
+\NormalTok{  beta1}\OtherTok{=}\FloatTok{0.17} 
+\NormalTok{  sds[}\DecValTok{1}\NormalTok{]}\OtherTok{=}\FloatTok{0.0655}
+  \CommentTok{\#H2: effect and sd from Williamson et al. 2021, which had a }
+    \CommentTok{\#similar self{-}reported empathy outcome}
+\NormalTok{  beta2}\OtherTok{=}\FloatTok{0.171} \CommentTok{\#H2}
+\NormalTok{  sds[}\DecValTok{2}\NormalTok{]}\OtherTok{=}\FloatTok{0.042}
+  \CommentTok{\#H3: effect and sd from Williamson et al. 2021, and borrow from }
+    \CommentTok{\#their outcome of expressed support for more open policies; }
+    \CommentTok{\#as we expect donation might be harder to move on than }
+    \CommentTok{\# support for policies, we reduce by 75\% the treatment effect }
+    \CommentTok{\#size from the study (and conservatively keep the same sd).}
+\NormalTok{  beta3}\OtherTok{=}\FloatTok{0.397}\SpecialCharTok{*}\FloatTok{0.25} \CommentTok{\#H3}
+\NormalTok{  sds[}\DecValTok{3}\NormalTok{]}\OtherTok{=}\FloatTok{0.112}
+  \CommentTok{\#H4: effect and sd from similar tested outcome from }
+    \CommentTok{\#Adida Lo Platas 2018 Table S1{-}{-}{-}a letter to the White House}
+    \CommentTok{\#and utilize the same treatment effect sizes and sds. }
+\NormalTok{  beta4}\OtherTok{=}\FloatTok{0.165}
+\NormalTok{  sds[}\DecValTok{4}\NormalTok{]}\OtherTok{=}\FloatTok{0.02}
+  \CommentTok{\#H5 Social distance scores we do not have an equivalent study}
+    \CommentTok{\#to lean on for priors on effect sizes, so we assume an }
+    \CommentTok{\#increment of 0.1 rank move with a similar sized sd.}
+\NormalTok{  beta5}\OtherTok{=}\FloatTok{0.1}
+\NormalTok{  sds[}\DecValTok{5}\NormalTok{]}\OtherTok{=}\FloatTok{0.1}
+  \CommentTok{\#H6: effect and sd from similar tested outcomes from }
+    \CommentTok{\#Adida Lo Platas 2018 Table S1 {-}{-} a thermometer towards an }
+    \CommentTok{\#outgroup (though in this case refugees) and use the same }
+    \CommentTok{\#treatment effect size and sds estimated.}
+\NormalTok{  beta6}\OtherTok{=}\FloatTok{4.622}
+\NormalTok{  sds[}\DecValTok{6}\NormalTok{]}\OtherTok{=}\FloatTok{0.08}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{generate-simulations}{%
+\subsection{Generate simulations}\label{generate-simulations}}
+
+One potential complication in our power calculations (that makes using
+``off the shelf'' solutions difficult) is that we must consider the
+overall number of subjects as well as the ``usable'' number of
+subjects,'' since our main registered hypotheses are for White subjects
+(and some proportion of respondents recruited will not be White). The
+code below takes this into account in the following way:
+
+Because we'd like to account for the probabilistic aspects of 1)
+receiving respondents who are not all White Americans (for which our
+main registered hypotheses are on) and 2) whether they are randomized to
+see an outgroup image (as the platform does not allow for sampling
+conditional on race), we simulate 1000 experiments for each N size with
+a generated set of data in each simulation and estimate the six tests
+(with registered Benjamini and Hochberg MH adjustments) and store. From
+here we can find how often, under each N scenario, the six treatment
+effects are able to be recovered --- the level of power. We aim for a
+power level above 0.95 per JOP suggestions.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Data holders: p{-}values and means}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\NormalTok{c.main1 }\OtherTok{\textless{}{-}}\NormalTok{ c.main2 }\OtherTok{\textless{}{-}}\NormalTok{ c.main3 }\OtherTok{\textless{}{-}}\NormalTok{ c.main4 }\OtherTok{\textless{}{-}}\NormalTok{ c.main5 }\OtherTok{\textless{}{-}}\NormalTok{ c.main6 }\OtherTok{\textless{}{-}}\FunctionTok{rep}\NormalTok{(}\ConstantTok{NA}\NormalTok{, sims)}
+\NormalTok{p.main1 }\OtherTok{\textless{}{-}}\NormalTok{ p.main2 }\OtherTok{\textless{}{-}}\NormalTok{ p.main3 }\OtherTok{\textless{}{-}}\NormalTok{ p.main4 }\OtherTok{\textless{}{-}}\NormalTok{ p.main5 }\OtherTok{\textless{}{-}}\NormalTok{ p.main6 }\OtherTok{\textless{}{-}}\FunctionTok{rep}\NormalTok{(}\ConstantTok{NA}\NormalTok{, sims)}
+\NormalTok{obs }\OtherTok{\textless{}{-}} \FunctionTok{rep}\NormalTok{(}\ConstantTok{NA}\NormalTok{, sims)}
+\CommentTok{\#set up parallel cores ii 185{-}191}
+\NormalTok{no\_clusters}\OtherTok{\textless{}{-}}\FunctionTok{detectCores}\NormalTok{()}\SpecialCharTok{{-}}\DecValTok{2}
+\ControlFlowTok{if}\NormalTok{ (}\FunctionTok{Sys.getenv}\NormalTok{(}\StringTok{"RSTUDIO"}\NormalTok{) }\SpecialCharTok{==} \StringTok{"1"} \SpecialCharTok{\&\&} \SpecialCharTok{!}\FunctionTok{nzchar}\NormalTok{(}\FunctionTok{Sys.getenv}\NormalTok{(}\StringTok{"RSTUDIO\_TERM"}\NormalTok{)) }\SpecialCharTok{\&\&} 
+    \FunctionTok{Sys.info}\NormalTok{()[}\StringTok{"sysname"}\NormalTok{] }\SpecialCharTok{==} \StringTok{"Darwin"} \SpecialCharTok{\&\&} \FunctionTok{getRversion}\NormalTok{() }\SpecialCharTok{\textgreater{}=} \StringTok{"4.0.0"}\NormalTok{) \{}
+\NormalTok{  parallel}\SpecialCharTok{:::}\FunctionTok{setDefaultClusterOptions}\NormalTok{(}\AttributeTok{setup\_strategy =} \StringTok{"sequential"}\NormalTok{)}
+\NormalTok{\}}
+\NormalTok{clust }\OtherTok{\textless{}{-}}\NormalTok{ parallel}\SpecialCharTok{::}\FunctionTok{makeCluster}\NormalTok{(no\_clusters)}
+\FunctionTok{registerDoParallel}\NormalTok{(clust)}
+\NormalTok{t}\OtherTok{\textless{}{-}}\FunctionTok{Sys.time}\NormalTok{()}
+\NormalTok{mydata}\OtherTok{\textless{}{-}}\FunctionTok{vector}\NormalTok{(}\StringTok{"list"}\NormalTok{,}\FunctionTok{nrow}\NormalTok{(n\_k))}
+\DocumentationTok{\#\#\#\# Outer loop to vary the overall number of subjects \#\#\#\#}
+\NormalTok{dat }\OtherTok{\textless{}{-}} \FunctionTok{foreach}\NormalTok{(}\AttributeTok{j=}\DecValTok{1}\SpecialCharTok{:}\FunctionTok{nrow}\NormalTok{(n\_k), }\AttributeTok{.combine=}\NormalTok{rbind,}\AttributeTok{.packages =} \FunctionTok{c}\NormalTok{(}\StringTok{"lmtest"}\NormalTok{)) }\SpecialCharTok{\%dopar\%}\NormalTok{ \{}
+\NormalTok{  N }\OtherTok{\textless{}{-}}\NormalTok{ n\_k}\SpecialCharTok{$}\NormalTok{N[j]}
+  \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{sims)\{}\CommentTok{\#inner loop}
+    \DocumentationTok{\#\#\# (I) }\AlertTok{\#\#\#}\DocumentationTok{ }
+    \CommentTok{\# Generate Respondent Race, Treatment/Image, Respondent ID}
+\NormalTok{    RespondentRace}\OtherTok{\textless{}{-}}\FunctionTok{sample}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Black"}\NormalTok{,}\StringTok{"White"}\NormalTok{,}\StringTok{"Other"}\NormalTok{),N,}\AttributeTok{prob=}\FunctionTok{c}\NormalTok{(prop\_black}
+\NormalTok{                    , prop\_white,(}\DecValTok{100}\SpecialCharTok{{-}}\NormalTok{prop\_black}\SpecialCharTok{{-}}\NormalTok{prop\_white)), }\AttributeTok{replace=}\ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{    Treatment}\OtherTok{\textless{}{-}} \FunctionTok{sample}\NormalTok{(}\FunctionTok{rep}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Peer Praise"}\NormalTok{,}\StringTok{"Control"}\NormalTok{),}\AttributeTok{each=}\NormalTok{N}\SpecialCharTok{/}\DecValTok{2}\NormalTok{),N,}\AttributeTok{replace=}\NormalTok{F)}
+\NormalTok{    ID}\OtherTok{\textless{}{-}}\DecValTok{1}\SpecialCharTok{:}\NormalTok{N}
+\NormalTok{    Image\_name}\OtherTok{\textless{}{-}}\FunctionTok{sample}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Black"}\NormalTok{, }\StringTok{"Hispanic"}\NormalTok{, }\StringTok{"White"}\NormalTok{),N,}\AttributeTok{prob=}\FunctionTok{c}\NormalTok{(}\FloatTok{0.45}\NormalTok{, }\FloatTok{0.45}\NormalTok{, }\FloatTok{0.1}\NormalTok{),}\AttributeTok{replace=}\NormalTok{T)}
+\NormalTok{    ImageBH}\OtherTok{\textless{}{-}}\FunctionTok{ifelse}\NormalTok{(Image\_name}\SpecialCharTok{==}\StringTok{"White"}\NormalTok{,}\StringTok{"Ingroup"}\NormalTok{,}\StringTok{"Outgroup"}\NormalTok{)}
+    
+    \CommentTok{\#Bind the X data}
+\NormalTok{    X}\OtherTok{\textless{}{-}}\FunctionTok{data.frame}\NormalTok{(}\AttributeTok{ID=}\NormalTok{ID,}\AttributeTok{RespondentRace=}\NormalTok{RespondentRace,}\AttributeTok{Treatment=}\FunctionTok{as.factor}\NormalTok{(Treatment),}
+                  \AttributeTok{ImageBH=}\FunctionTok{as.factor}\NormalTok{(ImageBH),}\AttributeTok{Image\_name=}\FunctionTok{as.factor}\NormalTok{(Image\_name))}
+\NormalTok{    X}\SpecialCharTok{$}\NormalTok{ControlvPraise}\OtherTok{\textless{}{-}}\FunctionTok{ifelse}\NormalTok{(X}\SpecialCharTok{$}\NormalTok{Treatment}\SpecialCharTok{==}\StringTok{"Control"}\NormalTok{,}\DecValTok{0}\NormalTok{,}\DecValTok{1}\NormalTok{)}
+    
+\NormalTok{    X }\OtherTok{\textless{}{-}} \FunctionTok{within}\NormalTok{(X, ImageBH }\OtherTok{\textless{}{-}} \FunctionTok{relevel}\NormalTok{(ImageBH, }\AttributeTok{ref =} \StringTok{"Ingroup"}\NormalTok{))}
+\NormalTok{    X }\OtherTok{\textless{}{-}} \FunctionTok{within}\NormalTok{(X,Treatment }\OtherTok{\textless{}{-}} \FunctionTok{relevel}\NormalTok{(Treatment, }\AttributeTok{ref=}\StringTok{"Peer Praise"}\NormalTok{))}
+\NormalTok{    d }\OtherTok{\textless{}{-}} \FunctionTok{subset}\NormalTok{(X, RespondentRace}\SpecialCharTok{==}\StringTok{"White"}\NormalTok{) }\CommentTok{\#Powered hypotheses on White resp}
+    \DocumentationTok{\#\#\# (II) }\AlertTok{\#\#\#}\DocumentationTok{ }
+    \CommentTok{\# Generate Ys}
+\NormalTok{  PeerPraise}\OtherTok{\textless{}{-}}\NormalTok{d}\SpecialCharTok{$}\NormalTok{ControlvPraise}
+\NormalTok{  ImageBH}\OtherTok{\textless{}{-}}\FunctionTok{ifelse}\NormalTok{(d}\SpecialCharTok{$}\NormalTok{ImageBH}\SpecialCharTok{==}\StringTok{"Ingroup"}\NormalTok{,}\DecValTok{0}\NormalTok{,}\DecValTok{1}\NormalTok{)}
+\NormalTok{  d}\SpecialCharTok{$}\NormalTok{Y1 }\OtherTok{=}\NormalTok{ beta1}\SpecialCharTok{*}\NormalTok{PeerPraise}\SpecialCharTok{+} \FunctionTok{rnorm}\NormalTok{(}\FunctionTok{length}\NormalTok{(PeerPraise),}\DecValTok{0}\NormalTok{,sds[}\DecValTok{1}\NormalTok{]) }\CommentTok{\#H1}
+\NormalTok{  d}\SpecialCharTok{$}\NormalTok{Y2 }\OtherTok{=}\NormalTok{ beta2}\SpecialCharTok{*}\NormalTok{PeerPraise}\SpecialCharTok{+} \FunctionTok{rnorm}\NormalTok{(}\FunctionTok{length}\NormalTok{(PeerPraise),}\DecValTok{0}\NormalTok{,sds[}\DecValTok{2}\NormalTok{]) }\CommentTok{\#H2}
+\NormalTok{  d}\SpecialCharTok{$}\NormalTok{Y3 }\OtherTok{=}\NormalTok{ beta3}\SpecialCharTok{*}\NormalTok{PeerPraise}\SpecialCharTok{+} \FunctionTok{rnorm}\NormalTok{(}\FunctionTok{length}\NormalTok{(PeerPraise),}\DecValTok{0}\NormalTok{,sds[}\DecValTok{3}\NormalTok{]) }\CommentTok{\#H3}
+\NormalTok{  d}\SpecialCharTok{$}\NormalTok{Y4 }\OtherTok{=}\NormalTok{ beta4}\SpecialCharTok{*}\NormalTok{PeerPraise}\SpecialCharTok{+} \FunctionTok{rnorm}\NormalTok{(}\FunctionTok{length}\NormalTok{(PeerPraise),}\DecValTok{0}\NormalTok{,sds[}\DecValTok{4}\NormalTok{]) }\CommentTok{\#H4}
+\NormalTok{  d}\SpecialCharTok{$}\NormalTok{Y5 }\OtherTok{=}\NormalTok{ beta5}\SpecialCharTok{*}\NormalTok{PeerPraise}\SpecialCharTok{+} \FunctionTok{rnorm}\NormalTok{(}\FunctionTok{length}\NormalTok{(PeerPraise),}\DecValTok{0}\NormalTok{,sds[}\DecValTok{5}\NormalTok{]) }\CommentTok{\#H5 distance}
+\NormalTok{  d}\SpecialCharTok{$}\NormalTok{Y6 }\OtherTok{=}\NormalTok{ beta6}\SpecialCharTok{*}\NormalTok{PeerPraise}\SpecialCharTok{+} \FunctionTok{rnorm}\NormalTok{(}\FunctionTok{length}\NormalTok{(PeerPraise),}\DecValTok{0}\NormalTok{,sds[}\DecValTok{6}\NormalTok{]) }\CommentTok{\#H6}
+\NormalTok{  dout}\OtherTok{\textless{}{-}}\FunctionTok{subset}\NormalTok{(d,ImageBH}\SpecialCharTok{==}\StringTok{"Outgroup"}\NormalTok{)}
+    \DocumentationTok{\#\#\# (III) }\AlertTok{\#\#\#}\DocumentationTok{ }
+    \DocumentationTok{\#\# Estimate models: H1{-}H6}
+\NormalTok{    main1 }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(}\AttributeTok{formula =}\NormalTok{ Y1 }\SpecialCharTok{\textasciitilde{}}\NormalTok{ ControlvPraise, }\AttributeTok{data =}\NormalTok{ dout)}
+\NormalTok{    main2 }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(}\AttributeTok{formula =}\NormalTok{ Y2 }\SpecialCharTok{\textasciitilde{}}\NormalTok{ ControlvPraise, }\AttributeTok{data =}\NormalTok{ d)}
+\NormalTok{    main3 }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(}\AttributeTok{formula =}\NormalTok{ Y3 }\SpecialCharTok{\textasciitilde{}}\NormalTok{ ControlvPraise, }\AttributeTok{data =}\NormalTok{ d)}
+\NormalTok{    main4 }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(}\AttributeTok{formula =}\NormalTok{ Y4 }\SpecialCharTok{\textasciitilde{}}\NormalTok{ ControlvPraise, }\AttributeTok{data =}\NormalTok{ d)}
+\NormalTok{    main5 }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(}\AttributeTok{formula =}\NormalTok{ Y5 }\SpecialCharTok{\textasciitilde{}}\NormalTok{ ControlvPraise, }\AttributeTok{data =}\NormalTok{ d)}
+\NormalTok{    main6 }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(}\AttributeTok{formula =}\NormalTok{ Y6 }\SpecialCharTok{\textasciitilde{}}\NormalTok{ ControlvPraise, }\AttributeTok{data =}\NormalTok{ d)}
+    \DocumentationTok{\#\#\# (IV) }\AlertTok{\#\#\#}\DocumentationTok{ }
+    \DocumentationTok{\#\# Store coefficients \& Benjamini{-}Hochberg adjusted pvals}
+\NormalTok{    obs[i] }\OtherTok{\textless{}{-}} \FunctionTok{nrow}\NormalTok{(}\FunctionTok{model.frame}\NormalTok{(main1))}
+\NormalTok{    c.main1[i] }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(main1)[}\DecValTok{2}\NormalTok{] }\CommentTok{\#H1}
+\NormalTok{    p.main1[i] }\OtherTok{\textless{}{-}} \FunctionTok{p.adjust}\NormalTok{(}\FunctionTok{summary}\NormalTok{(main1)}\SpecialCharTok{$}\NormalTok{coefficients[}\DecValTok{2}\NormalTok{,}\DecValTok{4}\NormalTok{],}\StringTok{"BH"}\NormalTok{,}\AttributeTok{n=}\NormalTok{n.hyp)}
+\NormalTok{    c.main2[i] }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(main2)[}\DecValTok{2}\NormalTok{] }\CommentTok{\#H2}
+\NormalTok{    p.main2[i] }\OtherTok{\textless{}{-}} \FunctionTok{p.adjust}\NormalTok{(}\FunctionTok{summary}\NormalTok{(main2)}\SpecialCharTok{$}\NormalTok{coefficients[}\DecValTok{2}\NormalTok{,}\DecValTok{4}\NormalTok{],}\StringTok{"BH"}\NormalTok{,}\AttributeTok{n=}\NormalTok{n.hyp)}
+\NormalTok{    c.main3[i] }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(main3)[}\DecValTok{2}\NormalTok{] }\CommentTok{\#H3}
+\NormalTok{    p.main3[i] }\OtherTok{\textless{}{-}} \FunctionTok{p.adjust}\NormalTok{(}\FunctionTok{summary}\NormalTok{(main3)}\SpecialCharTok{$}\NormalTok{coefficients[}\DecValTok{2}\NormalTok{,}\DecValTok{4}\NormalTok{],}\StringTok{"BH"}\NormalTok{,}\AttributeTok{n=}\NormalTok{n.hyp)}
+\NormalTok{    c.main4[i] }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(main4)[}\DecValTok{2}\NormalTok{] }\CommentTok{\#H4}
+\NormalTok{    p.main4[i] }\OtherTok{\textless{}{-}} \FunctionTok{p.adjust}\NormalTok{(}\FunctionTok{summary}\NormalTok{(main4)}\SpecialCharTok{$}\NormalTok{coefficients[}\DecValTok{2}\NormalTok{,}\DecValTok{4}\NormalTok{],}\StringTok{"BH"}\NormalTok{,}\AttributeTok{n=}\NormalTok{n.hyp)}
+\NormalTok{    c.main5[i] }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(main5)[}\DecValTok{2}\NormalTok{] }\CommentTok{\#H5}
+\NormalTok{    p.main5[i] }\OtherTok{\textless{}{-}} \FunctionTok{p.adjust}\NormalTok{(}\FunctionTok{summary}\NormalTok{(main5)}\SpecialCharTok{$}\NormalTok{coefficients[}\DecValTok{2}\NormalTok{,}\DecValTok{4}\NormalTok{],}\StringTok{"BH"}\NormalTok{,}\AttributeTok{n=}\NormalTok{n.hyp)}
+\NormalTok{    c.main6[i] }\OtherTok{\textless{}{-}} \FunctionTok{coef}\NormalTok{(main6)[}\DecValTok{2}\NormalTok{] }\CommentTok{\#H6}
+\NormalTok{    p.main6[i] }\OtherTok{\textless{}{-}} \FunctionTok{p.adjust}\NormalTok{(}\FunctionTok{summary}\NormalTok{(main6)}\SpecialCharTok{$}\NormalTok{coefficients[}\DecValTok{2}\NormalTok{,}\DecValTok{4}\NormalTok{],}\StringTok{"BH"}\NormalTok{,}\AttributeTok{n=}\NormalTok{n.hyp)}
+\NormalTok{  \}}
+  \DocumentationTok{\#\# Collect power info}
+\NormalTok{  powerAll}\OtherTok{\textless{}{-}} \FunctionTok{mean}\NormalTok{(}\FunctionTok{abs}\NormalTok{(c.main1)}\SpecialCharTok{\textgreater{}}\FloatTok{0.0} \SpecialCharTok{\&}\NormalTok{ p.main1}\SpecialCharTok{\textless{}}\NormalTok{alpha }\SpecialCharTok{\&}  \FunctionTok{abs}\NormalTok{(c.main2)}\SpecialCharTok{\textgreater{}}\FloatTok{0.0} \SpecialCharTok{\&}\NormalTok{ p.main2}\SpecialCharTok{\textless{}}\NormalTok{alpha }
+                  \SpecialCharTok{\&}  \FunctionTok{abs}\NormalTok{(c.main3)}\SpecialCharTok{\textgreater{}}\FloatTok{0.0} \SpecialCharTok{\&}\NormalTok{ p.main3}\SpecialCharTok{\textless{}}\NormalTok{alpha }\SpecialCharTok{\&} \FunctionTok{abs}\NormalTok{(c.main4)}\SpecialCharTok{\textgreater{}}\FloatTok{0.0} \SpecialCharTok{\&}\NormalTok{ p.main4}\SpecialCharTok{\textless{}}\NormalTok{alpha }
+                  \SpecialCharTok{\&} \FunctionTok{abs}\NormalTok{(c.main5)}\SpecialCharTok{\textgreater{}}\FloatTok{0.0} \SpecialCharTok{\&}\NormalTok{ p.main5}\SpecialCharTok{\textless{}}\NormalTok{alpha }\SpecialCharTok{\&}  \FunctionTok{abs}\NormalTok{(c.main6)}\SpecialCharTok{\textgreater{}}\FloatTok{0.0} \SpecialCharTok{\&}\NormalTok{ p.main6}\SpecialCharTok{\textless{}}\NormalTok{alpha)}
+  \DocumentationTok{\#\# Collect remaining obs}
+\NormalTok{  Obs }\OtherTok{\textless{}{-}} \FunctionTok{mean}\NormalTok{(obs)}
+  \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{Obs=}\NormalTok{Obs,}\AttributeTok{powerAll=}\NormalTok{powerAll)}
+\NormalTok{\}}
+\FunctionTok{stopCluster}\NormalTok{(clust)}
+\FunctionTok{print}\NormalTok{(}\FunctionTok{Sys.time}\NormalTok{()}\SpecialCharTok{{-}}\NormalTok{t)}
+
+\NormalTok{dat}\OtherTok{\textless{}{-}}\FunctionTok{cbind}\NormalTok{(n\_k,dat)}
+
+\FunctionTok{saveRDS}\NormalTok{(dat,}\AttributeTok{file=}\NormalTok{here}\SpecialCharTok{::}\FunctionTok{here}\NormalTok{(}\StringTok{"power\_JOP\_v2.rds"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{plots}{%
+\subsection{Plots}\label{plots}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dat}\OtherTok{\textless{}{-}}\FunctionTok{readRDS}\NormalTok{(}\AttributeTok{file=}\NormalTok{here}\SpecialCharTok{::}\FunctionTok{here}\NormalTok{(}\StringTok{"power\_JOP\_v2.rds"}\NormalTok{))}
+
+\CommentTok{\#power }
+\NormalTok{plot1}\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{dat,}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x=}\NormalTok{N,}\AttributeTok{y=}\NormalTok{powerAll))}\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{alpha=}\DecValTok{1}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x=}\StringTok{"n size required"}\NormalTok{,}\AttributeTok{y=}\StringTok{"Power"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{ylim}\NormalTok{(}\FloatTok{0.5}\NormalTok{,}\DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_bw}\NormalTok{()}\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{se =} \ConstantTok{FALSE}\NormalTok{, }\AttributeTok{method =} \StringTok{"loess"}\NormalTok{, }\AttributeTok{color=}\StringTok{"navy"}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\FloatTok{0.95}\NormalTok{,}\AttributeTok{linetype=}\StringTok{"dashed"}\NormalTok{,}\AttributeTok{color =} \StringTok{"tomato2"}\NormalTok{, }\AttributeTok{size=}\DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{ggtitle}\NormalTok{(}\StringTok{"Power calculations: Peer praise on Outgroup Inclusion"}\NormalTok{)}
+\NormalTok{plot1}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Power-calculations-JOP-clean-v2_files/figure-latex/unnamed-chunk-4-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggsave}\NormalTok{(plot1,}\AttributeTok{file=}\NormalTok{here}\SpecialCharTok{::}\FunctionTok{here}\NormalTok{(}\StringTok{"Figures"}\NormalTok{,}\StringTok{"powerJOP v2.pdf"}\NormalTok{), }\AttributeTok{width=}\DecValTok{8}\NormalTok{, }\AttributeTok{height=}\DecValTok{7}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+To power around 0.95 for H1-H6 we require around N=200 observations; we
+conservatively plan to field 400 observations.
+
+\hypertarget{co-partisan-peer-praise-effect-on-inclusion-towards-racialethnic-outgroups.}{%
+\subsection{Co-partisan peer praise effect on inclusion towards
+racial/ethnic
+outgroups.}\label{co-partisan-peer-praise-effect-on-inclusion-towards-racialethnic-outgroups.}}
+
+We also consider the same set up as the above but utilize praise from
+co-partisan peers on MTurk for our parallel ``Co-Partisan Peer Praise'';
+that is we design and field a separate study that looks at the effects
+of peer praise (from peers who share partisan identity with the
+respondent) on inclusion towards racial/ethnic outgroups. Again, we have
+the same six outcomes, though this time, we generate peer praise such
+that each time a respondent is randomized to receive treatment, they
+receive praise from a co-partisan group of peers (e.g.~a respondent who
+self-identifies as Republican receives peer praise from a group of
+Republican peers).
+
+\hypertarget{assumptions-1}{%
+\subsection{Assumptions}\label{assumptions-1}}
+
+As it's unclear whether co-partisan identity creates a peer praise
+effect that is stronger or weaker compared to peer praise from a general
+peer, we make the same assumptions of peer praise effect sizes as before
+and therefore similarly expect in powering around 0.95 for the six
+tests, we require another N=400.
+
+\hypertarget{mock-ups}{%
+\section{Mock ups}\label{mock-ups}}
+
+Code to generate mock up fig.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{12345}\NormalTok{)}
+\CommentTok{\#Set up data for Mock{-}up}
+\NormalTok{N}\OtherTok{\textless{}{-}}\DecValTok{400}
+\CommentTok{\# Generate Respondent Race, Treatment/Image, Respondent ID}
+\NormalTok{RespondentRace}\OtherTok{\textless{}{-}}\FunctionTok{sample}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Black"}\NormalTok{,}\StringTok{"White"}\NormalTok{,}\StringTok{"Other"}\NormalTok{),N,}\AttributeTok{prob=}\FunctionTok{c}\NormalTok{(prop\_black}
+\NormalTok{                 ,prop\_white,(}\DecValTok{100}\SpecialCharTok{{-}}\NormalTok{prop\_black}\SpecialCharTok{{-}}\NormalTok{prop\_white)), }\AttributeTok{replace=}\ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{Treatment}\OtherTok{\textless{}{-}} \FunctionTok{sample}\NormalTok{(}\FunctionTok{rep}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Peer Praise"}\NormalTok{,}\StringTok{"Control"}\NormalTok{),}\AttributeTok{each=}\NormalTok{N}\SpecialCharTok{/}\DecValTok{2}\NormalTok{),N,}\AttributeTok{replace=}\NormalTok{F)}
+\NormalTok{ID}\OtherTok{\textless{}{-}}\DecValTok{1}\SpecialCharTok{:}\NormalTok{N}
+\NormalTok{Image\_name}\OtherTok{\textless{}{-}}\FunctionTok{sample}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Black"}\NormalTok{, }\StringTok{"Hispanic"}\NormalTok{, }\StringTok{"White"}\NormalTok{),N,}\AttributeTok{prob=}\FunctionTok{c}\NormalTok{(}\FloatTok{0.45}\NormalTok{, }\FloatTok{0.45}\NormalTok{, }\FloatTok{0.1}\NormalTok{),}\AttributeTok{replace=}\NormalTok{T)}
+\NormalTok{ImageBH}\OtherTok{\textless{}{-}}\FunctionTok{ifelse}\NormalTok{(Image\_name}\SpecialCharTok{==}\StringTok{"White"}\NormalTok{,}\StringTok{"Ingroup"}\NormalTok{,}\StringTok{"Outgroup"}\NormalTok{)}
+\CommentTok{\#Bind the X data}
+\NormalTok{X}\OtherTok{\textless{}{-}}\FunctionTok{data.frame}\NormalTok{(}\AttributeTok{ID=}\NormalTok{ID,}\AttributeTok{RespondentRace=}\NormalTok{RespondentRace,}\AttributeTok{Treatment=}\FunctionTok{as.factor}\NormalTok{(Treatment)}
+\NormalTok{              ,}\AttributeTok{ImageBH=}\FunctionTok{as.factor}\NormalTok{(ImageBH),}\AttributeTok{Image\_name=}\FunctionTok{as.factor}\NormalTok{(Image\_name))}
+\NormalTok{X}\SpecialCharTok{$}\NormalTok{ControlvPraise}\OtherTok{\textless{}{-}}\FunctionTok{ifelse}\NormalTok{(X}\SpecialCharTok{$}\NormalTok{Treatment}\SpecialCharTok{==}\StringTok{"Control"}\NormalTok{,}\DecValTok{0}\NormalTok{,}\DecValTok{1}\NormalTok{)}
+\NormalTok{X }\OtherTok{\textless{}{-}} \FunctionTok{within}\NormalTok{(X, ImageBH }\OtherTok{\textless{}{-}} \FunctionTok{relevel}\NormalTok{(ImageBH, }\AttributeTok{ref =} \StringTok{"Ingroup"}\NormalTok{))}
+\NormalTok{X }\OtherTok{\textless{}{-}} \FunctionTok{within}\NormalTok{(X,Treatment }\OtherTok{\textless{}{-}} \FunctionTok{relevel}\NormalTok{(Treatment, }\AttributeTok{ref=}\StringTok{"Peer Praise"}\NormalTok{))}
+\NormalTok{d }\OtherTok{\textless{}{-}} \FunctionTok{subset}\NormalTok{(X, RespondentRace}\SpecialCharTok{==}\StringTok{"White"}\NormalTok{) }\CommentTok{\#Primary powered hypotheses on White respondents}
+\CommentTok{\# Generate Y1 (pick some reasonable baseline Y0 values to plot)}
+\NormalTok{PeerPraise}\OtherTok{\textless{}{-}}\NormalTok{d}\SpecialCharTok{$}\NormalTok{ControlvPraise}
+\NormalTok{ImageBH}\OtherTok{\textless{}{-}}\FunctionTok{ifelse}\NormalTok{(d}\SpecialCharTok{$}\NormalTok{ImageBH}\SpecialCharTok{==}\StringTok{"Ingroup"}\NormalTok{,}\DecValTok{0}\NormalTok{,}\DecValTok{1}\NormalTok{)}
+\NormalTok{d}\SpecialCharTok{$}\NormalTok{Y1 }\OtherTok{=} \FloatTok{0.3} \SpecialCharTok{+}\NormalTok{ beta1}\SpecialCharTok{*}\NormalTok{PeerPraise }\SpecialCharTok{+} \FunctionTok{rnorm}\NormalTok{(}\FunctionTok{length}\NormalTok{(PeerPraise),}\DecValTok{0}\NormalTok{,sds[}\DecValTok{1}\NormalTok{]) }
+\NormalTok{dout}\OtherTok{\textless{}{-}}\FunctionTok{subset}\NormalTok{(d,ImageBH}\SpecialCharTok{==}\StringTok{"Outgroup"}\NormalTok{)}
+\DocumentationTok{\#\# Estimate models: H1 (mock just do one)}
+\NormalTok{main1 }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(}\AttributeTok{formula =}\NormalTok{ Y1 }\SpecialCharTok{\textasciitilde{}}\NormalTok{ ControlvPraise, }\AttributeTok{data =}\NormalTok{ dout)}
+\CommentTok{\#p.adjust(summary(main1)$coefficients[2,4],"BH",n=n.hyp)}
+\DocumentationTok{\#\# Graphics}
+\NormalTok{mock}\OtherTok{\textless{}{-}}\FunctionTok{data.frame}\NormalTok{(}\AttributeTok{Treatment=}\FunctionTok{c}\NormalTok{(}\StringTok{"Control"}\NormalTok{,}\StringTok{"Peer Praise"}\NormalTok{),}
+                 \AttributeTok{Mean=}\FunctionTok{c}\NormalTok{(main1}\SpecialCharTok{$}\NormalTok{coefficients[}\DecValTok{1}\NormalTok{],}\FunctionTok{sum}\NormalTok{(main1}\SpecialCharTok{$}\NormalTok{coefficients)))}
+\CommentTok{\# For tweaking position of brackets}
+\NormalTok{e }\OtherTok{=} \FloatTok{0.3}
+\NormalTok{r }\OtherTok{=} \FloatTok{0.3}
+\NormalTok{w }\OtherTok{=} \FloatTok{0.025}
+\NormalTok{cp1}\OtherTok{\textless{}{-}}\FloatTok{0.525}
+\NormalTok{cp2}\OtherTok{\textless{}{-}}\FloatTok{0.6}
+\NormalTok{nudgeup}\OtherTok{\textless{}{-}}\FloatTok{0.02}
+\NormalTok{mockplot}\OtherTok{\textless{}{-}}\FunctionTok{ggplot}\NormalTok{(mock,}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x=}\NormalTok{Treatment, }\AttributeTok{y=}\NormalTok{Mean, }\AttributeTok{fill=}\NormalTok{Treatment)) }\SpecialCharTok{+} \FunctionTok{theme\_bw}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{geom\_bar}\NormalTok{(}\AttributeTok{stat=}\StringTok{"identity"}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{ylim}\NormalTok{(}\DecValTok{0}\NormalTok{,}\FloatTok{0.8}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{ylab}\NormalTok{(}\StringTok{"Behavioral Choice Task: choose empathy"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{xlab}\NormalTok{(}\StringTok{""}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{scale\_fill\_viridis}\NormalTok{(}\AttributeTok{option=}\StringTok{"magma"}\NormalTok{,}\AttributeTok{discrete=}\NormalTok{T,}\AttributeTok{begin=}\FloatTok{0.15}\NormalTok{,}\AttributeTok{end=}\FloatTok{0.7}\NormalTok{,}\AttributeTok{alpha=}\FloatTok{0.75}\NormalTok{) }\SpecialCharTok{+} 
+  \CommentTok{\#Mean labels}
+  \FunctionTok{geom\_text}\NormalTok{(}\AttributeTok{x=}\DecValTok{1}\NormalTok{,}\AttributeTok{y=}\NormalTok{mock}\SpecialCharTok{$}\NormalTok{Mean[}\DecValTok{1}\NormalTok{]}\SpecialCharTok{+}\NormalTok{nudgeup,}\AttributeTok{label=}\FunctionTok{paste}\NormalTok{(}\FunctionTok{round}\NormalTok{(mock}\SpecialCharTok{$}\NormalTok{Mean[}\DecValTok{1}\NormalTok{],}\DecValTok{3}\NormalTok{)),}\AttributeTok{color=}\StringTok{"gray40"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_text}\NormalTok{(}\AttributeTok{x=}\DecValTok{2}\NormalTok{,}\AttributeTok{y=}\NormalTok{mock}\SpecialCharTok{$}\NormalTok{Mean[}\DecValTok{2}\NormalTok{]}\SpecialCharTok{+}\NormalTok{nudgeup,}\AttributeTok{label=}\FunctionTok{paste}\NormalTok{(}\FunctionTok{round}\NormalTok{(mock}\SpecialCharTok{$}\NormalTok{Mean[}\DecValTok{2}\NormalTok{],}\DecValTok{3}\NormalTok{)),}\AttributeTok{color=}\StringTok{"gray40"}\NormalTok{) }\SpecialCharTok{+}
+  \CommentTok{\#Control v Peer Praise}
+  \FunctionTok{geom\_text}\NormalTok{(}\AttributeTok{x=}\FloatTok{1.5}\NormalTok{,}\AttributeTok{y=}\NormalTok{cp1}\SpecialCharTok{+}\NormalTok{r}\SpecialCharTok{*}\NormalTok{e}\SpecialCharTok{+}\NormalTok{w,}\AttributeTok{label=}\FunctionTok{paste}\NormalTok{(}\StringTok{"}
+\StringTok{            Difference in means=0.179305 (MH adj p=4.414082e{-}48)"}\NormalTok{),}\AttributeTok{color=}\StringTok{"gray30"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_segment}\NormalTok{(}\AttributeTok{x=}\DecValTok{1}\NormalTok{,}\AttributeTok{xend=}\DecValTok{2}\NormalTok{,}\AttributeTok{y=}\NormalTok{cp1}\SpecialCharTok{+}\NormalTok{r}\SpecialCharTok{*}\NormalTok{e,}\AttributeTok{yend=}\NormalTok{cp1}\SpecialCharTok{+}\NormalTok{r}\SpecialCharTok{*}\NormalTok{e,}\AttributeTok{size=}\FloatTok{0.3}\NormalTok{,}\AttributeTok{color=}\StringTok{"gray30"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_segment}\NormalTok{(}\AttributeTok{x=}\DecValTok{1}\NormalTok{,}\AttributeTok{xend=}\DecValTok{1}\NormalTok{,}\AttributeTok{y=}\NormalTok{cp1}\SpecialCharTok{+}\NormalTok{r}\SpecialCharTok{*}\NormalTok{e,}\AttributeTok{yend=}\NormalTok{cp1}\SpecialCharTok{+}\NormalTok{r}\SpecialCharTok{*}\NormalTok{e}\FloatTok{{-}0.08}\NormalTok{,}\AttributeTok{size=}\FloatTok{0.3}\NormalTok{,}\AttributeTok{color=}\StringTok{"gray30"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_segment}\NormalTok{(}\AttributeTok{x=}\DecValTok{2}\NormalTok{,}\AttributeTok{xend=}\DecValTok{2}\NormalTok{,}\AttributeTok{y=}\NormalTok{cp1}\SpecialCharTok{+}\NormalTok{r}\SpecialCharTok{*}\NormalTok{e,}\AttributeTok{yend=}\NormalTok{cp1}\SpecialCharTok{+}\NormalTok{r}\SpecialCharTok{*}\NormalTok{e}\FloatTok{{-}0.08}\NormalTok{,}\AttributeTok{size=}\FloatTok{0.3}\NormalTok{,}\AttributeTok{color=}\StringTok{"gray30"}\NormalTok{) }
+\CommentTok{\#mockplot}
+\FunctionTok{ggsave}\NormalTok{(mockplot,}\AttributeTok{file=}\NormalTok{here}\SpecialCharTok{::}\FunctionTok{here}\NormalTok{(}\StringTok{"Figures"}\NormalTok{,}\StringTok{"mockplot v2.pdf"}\NormalTok{),}\AttributeTok{width=}\DecValTok{8}\NormalTok{,}\AttributeTok{height=}\FloatTok{7.5}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+
+\end{document}
