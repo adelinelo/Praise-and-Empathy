@@ -1,5 +1,27 @@
 ## Functions used
 
+### Code education
+classify_education <- function(x) {
+  # Convert to lowercase for consistency
+  x_lower <- tolower(x)
+  # Highest degrees (High)
+  if (grepl("master('s)?|mla|mba|ms|ma|phd|md|jd|juris doctor|doctorate|professional degree", x_lower)) {
+    return("High")
+  }
+  # Bachelor's degrees (Medium)
+  else if (grepl("bachelor|ba/bs|b.s.|b.a.", x_lower)) {
+    return("Medium")
+  }
+  # High school or equivalent (Low)
+  else if (grepl("high school|ged|some high school|kindergarten|8th grade|no schooling", x_lower)) {
+    return("Low")
+  }
+  # Default: set as NA if not matched
+  else {
+    return(NA)
+  }
+} 
+
 ### Attrition functions
 
 # ----------------------------------------------------------------------
@@ -239,5 +261,77 @@ plot_attrition <- function(data
     labs(y = title_y)
   
   return(p)
+}
+
+
+### Manski bound functions
+compute_manski_bounds <- function(df, a = 0, b = 1) {
+  # Inputs: df with columns Z (0/1) and Y (may be NA)
+  # Returns: list with point estimates for bounds and components
+  require(stats)
+  # sample sizes
+  n <- nrow(df)
+  n1 <- sum(df$Z == 1)
+  n0 <- sum(df$Z == 0)
+  
+  # observed response indicators
+  R <- ifelse(is.na(df$Y), 0, 1)
+  
+  # response rates by arm
+  rz1 <- mean(R[df$Z == 1])
+  rz0 <- mean(R[df$Z == 0])
+  
+  # observed means among responders in each arm (NA if no responders)
+  y1_obs <- if (sum(df$Z == 1 & R == 1) > 0) mean(df$Y[df$Z == 1 & R == 1]) else NA
+  y0_obs <- if (sum(df$Z == 0 & R == 1) > 0) mean(df$Y[df$Z == 0 & R == 1]) else NA
+  
+  # bounds for mean potential outcomes
+  mu1_lower <- rz1 * y1_obs + (1 - rz1) * a
+  mu1_upper <- rz1 * y1_obs + (1 - rz1) * b
+  mu0_lower <- rz0 * y0_obs + (1 - rz0) * a
+  mu0_upper <- rz0 * y0_obs + (1 - rz0) * b
+  
+  # Manski bounds for ATE
+  ate_lower <- mu1_lower - mu0_upper
+  ate_upper <- mu1_upper - mu0_lower
+  
+  res <- list(
+    n = n, n1 = n1, n0 = n0,
+    rz1 = rz1, rz0 = rz0,
+    y1_obs = y1_obs, y0_obs = y0_obs,
+    mu1_lower = mu1_lower, mu1_upper = mu1_upper,
+    mu0_lower = mu0_lower, mu0_upper = mu0_upper,
+    ate_lower = ate_lower, ate_upper = ate_upper
+  )
+  return(res)
+}
+# Bootstrap for sampling uncertainty of bound endpoints
+bootstrap_manski <- function(df, a = 0, b = 1, Rboot = 2000, seed = 1234) {
+  set.seed(seed)
+  n <- nrow(df)
+  boot_ates <- matrix(NA, nrow = Rboot, ncol = 2)
+  colnames(boot_ates) <- c("ate_lower", "ate_upper")
+  
+  for (i in 1:Rboot) {
+    ids <- sample.int(n, size = n, replace = TRUE)
+    dfb <- df[ids, , drop = FALSE]
+    out <- compute_manski_bounds(dfb, a = a, b = b)
+    boot_ates[i, "ate_lower"] <- out$ate_lower
+    boot_ates[i, "ate_upper"] <- out$ate_upper
+  }
+  
+  # point estimates from original sample
+  orig <- compute_manski_bounds(df, a = a, b = b)
+  
+  # Construct percentile bootstrap CIs for each bound endpoint
+  ci_lower <- quantile(boot_ates[, "ate_lower"], probs = c(0.025, 0.975), na.rm = TRUE)
+  ci_upper <- quantile(boot_ates[, "ate_upper"], probs = c(0.025, 0.975), na.rm = TRUE)
+  
+  list(
+    point = list(ate_lower = orig$ate_lower, ate_upper = orig$ate_upper),
+    boot_samples = boot_ates,
+    ci_lower = ci_lower,
+    ci_upper = ci_upper
+  )
 }
 

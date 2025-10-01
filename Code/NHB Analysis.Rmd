@@ -1,0 +1,2045 @@
+---
+title: "NHB Analysis"
+author: "Adeline Lo"
+date: 'This version: September 2025'
+output: 
+  html_document: 
+    code_folding: hide
+    pandoc_args: ["--lua-filter=color-text.lua"]
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: united
+  pdf_document: 
+    pandoc_args: ["--lua-filter=color-text.lua"]
+    keep_tex: true
+header-includes:
+  - \preauthor{\centering\large}
+  - \predate{\centering\normalsize}
+  - \pretitle{\centering\Large\textbf}
+  - \usepackage{setspace}\onehalfspacing
+  - \usepackage{xcolor}
+  - \usepackage[shortlabels]{enumitem}
+  - \usepackage{pgf,tikz, mathabx}
+  - \usetikzlibrary{positioning}
+editor_options:
+  chunk_output_type: console
+---
+<style>
+
+table, td, th {
+  border: none;
+  padding-left: 1em;
+  padding-right: 1em;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+</style>
+
+```{cat, engine.opts = list(file = "color-text.lua")}
+Span = function(span)
+  color = span.attributes['color']
+  -- if no color attribute, return unchange
+  if color == nil then return span end
+  
+  -- tranform to <span style="color: red;"></span>
+  if FORMAT:match 'html' then
+    -- remove color attributes
+    span.attributes['color'] = nil
+    -- use style attribute instead
+    span.attributes['style'] = 'color: ' .. color .. ';'
+    -- return full span element
+    return span
+  elseif FORMAT:match 'latex' then
+    -- remove color attributes
+    span.attributes['color'] = nil
+    -- encapsulate in latex code
+    table.insert(
+      span.content, 1,
+      pandoc.RawInline('latex', '\\textcolor{'..color..'}{')
+    )
+    table.insert(
+      span.content,
+      pandoc.RawInline('latex', '}')
+    )
+    -- returns only span content
+    return span.content
+  else
+    -- for other format return unchanged
+    return span
+  end
+end
+```
+
+<!-- # Packages: -->
+
+```{r,eval=TRUE,message=FALSE,warning=FALSE}
+rm(list=ls())
+
+pacman::p_load(here,Hmisc,dplyr,lubridate,gridExtra,grid,stargazer,hrbrthemes,quanteda,readtext,tidyverse,knitr,papeR,tidyr,kableExtra,ggpubr,printr,tab,lfe,sjPlot,clusterSEs,BBmisc,miceadds,mediation,estimatr,sensemakr,SentimentAnalysis,ggplot2,ggridges,viridis,BayesFactor,mediation,broom,scales)
+
+source("R_fns.R")
+```
+
+# Study 1
+
+Peer Praise effects on Racial/Ethnic Outgroup Inclusion
+
+## Clean preprocess data
+
+```{r}
+#Clean data (INTERNAL PORTION)
+#setwd("/Users/lob623/Dropbox/Praise-and-Empathy/Analysis")
+
+data1 <- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","Study1Wave1_August18.csv"),header=T, na.strings=c("", " ", "NA"))
+data2 <- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","Study1Wave2_August26.csv"),header=T, na.strings=c("", " ", "NA"))
+key<- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","matching_key.csv"),header=T, na.strings=c("", " ", "NA"))
+key$keyID <- 1:nrow(key) #create unique identifier that is not MTurk_ID so datasets can be deidentified
+
+data1<-data1[-(1:2),] # 
+data2<-data2[-(1:2),] #
+
+# key has full set of clean wave 2 respondents matched to wave 1 respondents:
+data2 <- data2[data2$ResponseId %in% key$ResponseId_wave2, , drop = FALSE] 
+
+data2$keyID <- key$keyID[match(data2$ResponseId, key$ResponseId_wave2)]
+data1$keyID <- key$keyID[match(data1$ResponseId, key$ResponseId_wave1)]
+
+## variable for if respondent is captured in wave 2 
+data1$wave2_present <- as.integer(data1$keyID %in% data2$keyID) 
+
+## variable for if respondent (in wave 2) is from wave1 -- sanity check--checked
+#data2$wave1_present <- as.integer(data2$keyID %in% data1$keyID) 
+
+
+#Screen out nonattentive and non-consenting
+#Consented
+data1<-subset(data1,consent=="I agree to participate")
+data2<-subset(data2,consent=="I agree to participate")
+
+#Pass Attention Checks
+data1$attentionMC<-ifelse(data1$attention_1=="Classified,None of the above",1,0)
+data1$attentionG<-ifelse((data1$attention_2_3=="Agree"|data1$attention_2_3=="Agree strongly")&data1$attention_2_5=="Neither agree nor disagree",1,0)
+data1$attentive<-rowSums(cbind(data1$attentionMC,data1$attentionG),na.rm=TRUE)
+data1<-subset(data1,attentive==2) #attentive
+
+
+#sum(is.na(data1$MTurk_ID))
+
+
+#data1/data2 error: a few MTURK_IDs took the survey twice because of bug ----take first taken survey as only observation
+data1$StartDate <- ymd_hms(data1$StartDate)
+
+# Keep only the first survey per MTurk_ID
+
+#save separate -- remove duplicates but keep incomplete responses (to account for attrition later)
+data1 <- data1 %>%
+  group_by(MTurk_ID) %>%
+  slice_min(StartDate) %>%
+  ungroup()
+
+data2$StartDate <- ymd_hms(data2$StartDate)
+
+data2 <- data2 %>%
+  group_by(MTurk_ID) %>%
+  slice_min(StartDate) %>%
+  ungroup()
+
+## We're going to conduct H1-H4 on data1, then H5-H6 on data2 joined with info from data1 for treatment, pre-treatment covs;
+#Subset data1 variables we want to merge into data2
+data1_sub<-data1 %>% dplyr::select(keyID,race,age,education,citizenship,income
+                                   ,party_id,religion,social_dis1,therm1_1,therm1_2
+                                   ,empathyself1,empathyself2,empathyself3
+                                   ,ethnocentrism_1,ethnocentrism_2,ethnocentrism_3,ethnocentrism_4
+                                   ,ethnocentrism_5,ethnocentrism_6,ethnocentrism_7,ethnocentrism_8
+                                   ,peers_1,peers_2,peers_3
+                                   ,Happy_1,Happy_2,Happy_3,anxiety_1,anxiety_2,anxiety_3,anger_1,anger_2,anger_3
+                                   ,treatment)
+
+data2 <- data2 %>%
+  left_join(data1_sub, by = "keyID")
+
+#remove all MTurk ID traces --- can't share this publicly
+data1$MTurk_ID <- NULL
+data2$MTurk_ID <- NULL
+
+## Save -- start with below in files
+saveRDS(data1,here::here("NHB data/Study1Wave1.rds"))
+saveRDS(data2,here::here("NHB data/Study1Wave2.rds"))
+
+data1<-readRDS(here::here("NHB data/Study1Wave1.rds"))
+data2<-readRDS(here::here("NHB data/Study1Wave2.rds"))
+
+####################################################################### 
+###### CLEAN DATA -- PUBLIC DEIDENTIFIED VERSION STARTS HERE ##########
+####################################################################### 
+
+### Treatment ### 
+data1$PraiseControl<-ifelse(data1$treatment=="empathetic",1,ifelse(data1$treatment=="control",0,NA))
+data1$PraisePlacebo<-ifelse(data1$treatment=="empathetic",1,ifelse(data1$treatment=="placebo",0,NA))
+data1$PlaceboControl<-ifelse(data1$treatment=="placebo",1,ifelse(data1$treatment=="control",0,NA))
+data2$PraiseControl<-ifelse(data2$treatment=="empathetic",1,ifelse(data2$treatment=="control",0,NA))
+data2$PraisePlacebo<-ifelse(data2$treatment=="empathetic",1,ifelse(data2$treatment=="placebo",0,NA))
+data2$PlaceboControl<-ifelse(data2$treatment=="placebo",1,ifelse(data2$treatment=="control",0,NA))
+### Covs ### 
+#Race
+data1$raceWhite<-ifelse(data1$race=="White, not-Hispanic",1,0)#not include multirace -- only strictly White
+data2$raceWhite<-ifelse(data2$race=="White, not-Hispanic",1,0)
+data1$raceBH <- ifelse(
+  grepl("Black or African American", data1$race) | 
+  grepl("Hispanic or Latino", data1$race),
+  1, ifelse(data1$raceWhite==1,0,NA)
+) 
+data2$raceBH <- ifelse(
+  grepl("Black or African American", data2$race) | 
+  grepl("Hispanic or Latino", data2$race),
+  1, ifelse(data2$raceWhite==1,0,NA)
+) 
+data1$min<-as.numeric(data1$Duration..in.seconds.)/60
+data2$min<-as.numeric(data2$Duration..in.seconds.)/60
+#Ethnocentrism: higher values more ethnocentric
+  #culturebackward
+data1$ethnocentrism_1n <- ifelse(data1$ethnocentrism_1=="Strongly disagree",0,ifelse(data1$ethnocentrism_1=="Disagree",1,ifelse(data1$ethnocentrism_1=="Neutral",2,ifelse(data1$ethnocentrism_1=="Agree",3,ifelse(data1$ethnocentrism_1=="Strongly agree",4,NA)))))
+  #rolemodel
+data1$ethnocentrism_2n <- ifelse(data1$ethnocentrism_2=="Strongly disagree",0,ifelse(data1$ethnocentrism_2=="Disagree",1,ifelse(data1$ethnocentrism_2=="Neutral",2,ifelse(data1$ethnocentrism_2=="Agree",3,ifelse(data1$ethnocentrism_2=="Strongly agree",4,NA)))))  
+  #actstrange
+data1$ethnocentrism_3n <- ifelse(data1$ethnocentrism_3=="Strongly disagree",0,ifelse(data1$ethnocentrism_3=="Disagree",1,ifelse(data1$ethnocentrism_3=="Neutral",2,ifelse(data1$ethnocentrism_3=="Agree",3,ifelse(data1$ethnocentrism_3=="Strongly agree",4,NA)))))  
+  #othersvalid --- reverse code
+data1$ethnocentrism_4n <- ifelse(data1$ethnocentrism_4=="Strongly disagree",4,ifelse(data1$ethnocentrism_4=="Disagree",3,ifelse(data1$ethnocentrism_4=="Neutral",2,ifelse(data1$ethnocentrism_4=="Agree",1,ifelse(data1$ethnocentrism_4=="Strongly agree",0,NA)))))  
+  #othersshouldbelikemine
+data1$ethnocentrism_5n <- ifelse(data1$ethnocentrism_5=="Strongly disagree",0,ifelse(data1$ethnocentrism_5=="Disagree",1,ifelse(data1$ethnocentrism_5=="Neutral",2,ifelse(data1$ethnocentrism_5=="Agree",3,ifelse(data1$ethnocentrism_5=="Strongly agree",4,NA)))))  
+  #notinterested
+data1$ethnocentrism_6n <- ifelse(data1$ethnocentrism_6=="Strongly disagree",0,ifelse(data1$ethnocentrism_6=="Disagree",1,ifelse(data1$ethnocentrism_6=="Neutral",2,ifelse(data1$ethnocentrism_6=="Agree",3,ifelse(data1$ethnocentrism_6=="Strongly agree",4,NA)))))  
+  #learnfromothers --- reverse code
+data1$ethnocentrism_7n <- ifelse(data1$ethnocentrism_7=="Strongly disagree",4,ifelse(data1$ethnocentrism_7=="Disagree",3,ifelse(data1$ethnocentrism_7=="Neutral",2,ifelse(data1$ethnocentrism_7=="Agree",1,ifelse(data1$ethnocentrism_7=="Strongly agree",0,NA)))))  
+  #dkwhatsgood 
+data1$ethnocentrism_8n <- ifelse(data1$ethnocentrism_8=="Strongly disagree",0,ifelse(data1$ethnocentrism_8=="Disagree",1,ifelse(data1$ethnocentrism_8=="Neutral",2,ifelse(data1$ethnocentrism_8=="Agree",3,ifelse(data1$ethnocentrism_8=="Strongly agree",4,NA)))))  
+  #create index
+data1$ethnocentrism_index<-rowSums(data1[, c("ethnocentrism_1n", "ethnocentrism_2n", "ethnocentrism_3n", "ethnocentrism_4n","ethnocentrism_5n","ethnocentrism_6n","ethnocentrism_7n","ethnocentrism_8n")], na.rm = FALSE)
+
+data2$ethnocentrism_1n <- ifelse(data2$ethnocentrism_1=="Strongly disagree",0,ifelse(data2$ethnocentrism_1=="Disagree",1,ifelse(data2$ethnocentrism_1=="Neutral",2,ifelse(data2$ethnocentrism_1=="Agree",3,ifelse(data2$ethnocentrism_1=="Strongly agree",4,NA)))))
+  #rolemodel
+data2$ethnocentrism_2n <- ifelse(data2$ethnocentrism_2=="Strongly disagree",0,ifelse(data2$ethnocentrism_2=="Disagree",1,ifelse(data2$ethnocentrism_2=="Neutral",2,ifelse(data2$ethnocentrism_2=="Agree",3,ifelse(data2$ethnocentrism_2=="Strongly agree",4,NA)))))  
+  #actstrange
+data2$ethnocentrism_3n <- ifelse(data2$ethnocentrism_3=="Strongly disagree",0,ifelse(data2$ethnocentrism_3=="Disagree",1,ifelse(data2$ethnocentrism_3=="Neutral",2,ifelse(data2$ethnocentrism_3=="Agree",3,ifelse(data2$ethnocentrism_3=="Strongly agree",4,NA)))))  
+  #othersvalid --- reverse code
+data2$ethnocentrism_4n <- ifelse(data2$ethnocentrism_4=="Strongly disagree",4,ifelse(data2$ethnocentrism_4=="Disagree",3,ifelse(data2$ethnocentrism_4=="Neutral",2,ifelse(data2$ethnocentrism_4=="Agree",1,ifelse(data2$ethnocentrism_4=="Strongly agree",0,NA)))))  
+  #othersshouldbelikemine
+data2$ethnocentrism_5n <- ifelse(data2$ethnocentrism_5=="Strongly disagree",0,ifelse(data2$ethnocentrism_5=="Disagree",1,ifelse(data2$ethnocentrism_5=="Neutral",2,ifelse(data2$ethnocentrism_5=="Agree",3,ifelse(data2$ethnocentrism_5=="Strongly agree",4,NA)))))  
+  #notinterested
+data2$ethnocentrism_6n <- ifelse(data2$ethnocentrism_6=="Strongly disagree",0,ifelse(data2$ethnocentrism_6=="Disagree",1,ifelse(data2$ethnocentrism_6=="Neutral",2,ifelse(data2$ethnocentrism_6=="Agree",3,ifelse(data2$ethnocentrism_6=="Strongly agree",4,NA)))))  
+  #learnfromothers --- reverse code
+data2$ethnocentrism_7n <- ifelse(data2$ethnocentrism_7=="Strongly disagree",4,ifelse(data2$ethnocentrism_7=="Disagree",3,ifelse(data2$ethnocentrism_7=="Neutral",2,ifelse(data2$ethnocentrism_7=="Agree",1,ifelse(data2$ethnocentrism_7=="Strongly agree",0,NA)))))  
+  #dkwhatsgood 
+data2$ethnocentrism_8n <- ifelse(data2$ethnocentrism_8=="Strongly disagree",0,ifelse(data2$ethnocentrism_8=="Disagree",1,ifelse(data2$ethnocentrism_8=="Neutral",2,ifelse(data2$ethnocentrism_8=="Agree",3,ifelse(data2$ethnocentrism_8=="Strongly agree",4,NA)))))  
+  #create index
+data2$ethnocentrism_index<-rowSums(data2[, c("ethnocentrism_1n", "ethnocentrism_2n", "ethnocentrism_3n", "ethnocentrism_4n","ethnocentrism_5n","ethnocentrism_6n","ethnocentrism_7n","ethnocentrism_8n")], na.rm = FALSE)
+
+
+#Age
+data1$age<-as.numeric(data1$age)
+data2$age<-as.numeric(data2$age)
+#Sex
+data1$sex<-factor(data1$sex,levels=c("Female","Male","Non-binary","Other"))
+data2$sex<-factor(data2$sex,levels=c("Female","Male","Non-binary","Other"))
+#Educ: code a version that is up to and including HS, college of Assoc degree, beyond college code as L, M, H
+
+data1$education_level <- sapply(data1$education, classify_education)
+data1$education_level <- factor(data1$education_level, levels = c("Low", "Medium", "High")) 
+data2$education_level <- sapply(data2$education, classify_education)
+data2$education_level <- factor(data2$education_level, levels = c("Low", "Medium", "High")) 
+
+#Political Party: code version D, I, R
+data1$party<-ifelse(data1$party_id=="Strong Democrat"|data1$party_id=="Democrat"|data1$party_id=="Lean Democrat","Democrat",ifelse(data1$party_id=="Strong Republican"|data1$party_id=="Republican"|data1$party_id=="Lean Republican","Republican",ifelse(data1$party_id=="Independent","Independent",NA)))
+data1$party<-factor(data1$party,levels=c("Republican","Independent","Democrat"))
+
+data2$party<-ifelse(data2$party_id=="Strong Democrat"|data2$party_id=="Democrat"|data2$party_id=="Lean Democrat","Democrat",ifelse(data2$party_id=="Strong Republican"|data2$party_id=="Republican"|data2$party_id=="Lean Republican","Republican",ifelse(data2$party_id=="Independent","Independent",NA)))
+data2$party<-factor(data2$party,levels=c("Republican","Independent","Democrat"))
+
+#Income
+income_levels <- c("Less than 25k", "25k to less than 50k", "50k to less than 75k", "75k to less than 100k", "100k or more")
+# Convert the income variable to an ordered factor
+data1$income <- factor(data1$income, levels = income_levels, ordered = TRUE) 
+#Baseline Empathy - Post11--Empathy Battery (measured post DV)
+  #inshoes
+data1$base_empathy1 <- as.numeric(gsub("\\D.*", "", data1$post11_1))
+  #imagineinplace
+data1$base_empathy2 <- as.numeric(gsub("\\D.*", "", data1$post11_2))
+  #tenderconcern
+data1$base_empathy3 <- as.numeric(gsub("\\D.*", "", data1$post11_3))
+  #protective
+data1$base_empathy4 <- as.numeric(gsub("\\D.*", "", data1$post11_4))
+  #emotional situation scares me: reverse code
+data1$base_empathy5 <- ifelse(data1$post11_5=="5\nDescribes me very well",1,ifelse(data1$post11_5=="4\nDescribes me",2,ifelse(data1$post11_5=="3\nSomewhat describes me",3,ifelse(data1$post11_5=="2\nDoes not describe me",4,ifelse(data1$post11_5=="1\nDoes not describe me well",5,NA)))))
+  #emergencypieces
+data1$base_empathy6 <- as.numeric(gsub("\\D.*", "", data1$post11_6))
+  #storynovel
+data1$base_empathy7 <- as.numeric(gsub("\\D.*", "", data1$post11_7))
+  #movie
+data1$base_empathy8 <- as.numeric(gsub("\\D.*", "", data1$post11_8))
+  #index
+data1$base_empathy <- rowSums(data1[, c("base_empathy1", "base_empathy2", "base_empathy3", "base_empathy4", "base_empathy5","base_empathy6","base_empathy7","base_empathy8")], na.rm = FALSE)
+#Desirable to be empathetic (personal belief)
+data1$empathy_desirable <- ifelse(data1$post17=="Objectivity is much more desirable",0,ifelse(data1$post17=="Objectivity is more desirable",1,ifelse(data1$post17=="They are equally desirable",2,ifelse(data1$post17=="Empathy is more desirable",3,ifelse(data1$post17=="Empathy is much more desirable",4,NA)))))
+#Norms: how strongly agree/disagree people value empathetic behavior
+data1$norms_n<-ifelse(data1$norms=="Strongly disagree",0,ifelse(data1$norms=="Disagree",1,ifelse(data1$norms=="Neither agree nor disagree",2,ifelse(data1$norms=="Agree",3,ifelse(data1$norms=="Strongly agree",4,NA)))))
+data2$norms_n<-ifelse(data2$norms=="Strongly disagree",0,ifelse(data2$norms=="Disagree",1,ifelse(data2$norms=="Neither agree nor disagree",2,ifelse(data2$norms=="Agree",3,ifelse(data2$norms=="Strongly agree",4,NA)))))
+#Emotions:
+  ##Happy: indiv vars numeric, and indexed together
+data1$Happy_1_n<-ifelse(data1$Happy_1=="Very slightly or not at all",0,ifelse(data1$Happy_1=="A little",1,ifelse(data1$Happy_1=="Moderately",2,ifelse(data1$Happy_1=="Quite a lot",3,ifelse(data1$Happy_1=="Extremely",4,NA)))))
+data1$Happy_2_n<-ifelse(data1$Happy_2=="Very slightly or not at all",0,ifelse(data1$Happy_2=="A little",1,ifelse(data1$Happy_2=="Moderately",2,ifelse(data1$Happy_2=="Quite a lot",3,ifelse(data1$Happy_2=="Extremely",4,NA)))))
+data1$Happy_3_n<-ifelse(data1$Happy_3=="Very slightly or not at all",0,ifelse(data1$Happy_3=="A little",1,ifelse(data1$Happy_3=="Moderately",2,ifelse(data1$Happy_3=="Quite a lot",3,ifelse(data1$Happy_3=="Extremely",4,NA)))))
+data1$Happy_index<-rowSums(data1[, c("Happy_1_n", "Happy_2_n", "Happy_3_n")], na.rm = FALSE)
+
+data2$Happy_1_n<-ifelse(data2$Happy_1=="Very slightly or not at all",0,ifelse(data2$Happy_1=="A little",1,ifelse(data2$Happy_1=="Moderately",2,ifelse(data2$Happy_1=="Quite a lot",3,ifelse(data2$Happy_1=="Extremely",4,NA)))))
+data2$Happy_2_n<-ifelse(data2$Happy_2=="Very slightly or not at all",0,ifelse(data2$Happy_2=="A little",1,ifelse(data2$Happy_2=="Moderately",2,ifelse(data2$Happy_2=="Quite a lot",3,ifelse(data2$Happy_2=="Extremely",4,NA)))))
+data2$Happy_3_n<-ifelse(data2$Happy_3=="Very slightly or not at all",0,ifelse(data2$Happy_3=="A little",1,ifelse(data2$Happy_3=="Moderately",2,ifelse(data2$Happy_3=="Quite a lot",3,ifelse(data2$Happy_3=="Extremely",4,NA)))))
+data2$Happy_index<-rowSums(data2[, c("Happy_1_n", "Happy_2_n", "Happy_3_n")], na.rm = FALSE)
+
+
+  ##anxiety
+data1$anxiety_1_n<-ifelse(data1$anxiety_1=="Very slightly or not at all",0,ifelse(data1$anxiety_1=="A little",1,ifelse(data1$anxiety_1=="Moderately",2,ifelse(data1$anxiety_1=="Quite a lot",3,ifelse(data1$anxiety_1=="Extremely",4,NA)))))
+data1$anxiety_2_n<-ifelse(data1$anxiety_2=="Very slightly or not at all",0,ifelse(data1$anxiety_2=="A little",1,ifelse(data1$anxiety_2=="Moderately",2,ifelse(data1$anxiety_2=="Quite a lot",3,ifelse(data1$anxiety_2=="Extremely",4,NA)))))
+data1$anxiety_3_n<-ifelse(data1$anxiety_3=="Very slightly or not at all",0,ifelse(data1$anxiety_3=="A little",1,ifelse(data1$anxiety_3=="Moderately",2,ifelse(data1$anxiety_3=="Quite a lot",3,ifelse(data1$anxiety_3=="Extremely",4,NA)))))
+data1$anxiety_index<-rowSums(data1[, c("anxiety_1_n", "anxiety_2_n", "anxiety_3_n")], na.rm = FALSE)
+
+data2$anxiety_1_n<-ifelse(data2$anxiety_1=="Very slightly or not at all",0,ifelse(data2$anxiety_1=="A little",1,ifelse(data2$anxiety_1=="Moderately",2,ifelse(data2$anxiety_1=="Quite a lot",3,ifelse(data2$anxiety_1=="Extremely",4,NA)))))
+data2$anxiety_2_n<-ifelse(data2$anxiety_2=="Very slightly or not at all",0,ifelse(data2$anxiety_2=="A little",1,ifelse(data2$anxiety_2=="Moderately",2,ifelse(data2$anxiety_2=="Quite a lot",3,ifelse(data2$anxiety_2=="Extremely",4,NA)))))
+data2$anxiety_3_n<-ifelse(data2$anxiety_3=="Very slightly or not at all",0,ifelse(data2$anxiety_3=="A little",1,ifelse(data2$anxiety_3=="Moderately",2,ifelse(data2$anxiety_3=="Quite a lot",3,ifelse(data2$anxiety_3=="Extremely",4,NA)))))
+data2$anxiety_index<-rowSums(data2[, c("anxiety_1_n", "anxiety_2_n", "anxiety_3_n")], na.rm = FALSE)
+
+
+  ##anger
+data1$anger_1_n<-ifelse(data1$anger_1=="Very slightly or not at all",0,ifelse(data1$anger_1=="A little",1,ifelse(data1$anger_1=="Moderately",2,ifelse(data1$anger_1=="Quite a lot",3,ifelse(data1$anger_1=="Extremely",4,NA)))))
+data1$anger_2_n<-ifelse(data1$anger_2=="Very slightly or not at all",0,ifelse(data1$anger_2=="A little",1,ifelse(data1$anger_2=="Moderately",2,ifelse(data1$anger_2=="Quite a lot",3,ifelse(data1$anger_2=="Extremely",4,NA)))))
+data1$anger_3_n<-ifelse(data1$anger_3=="Very slightly or not at all",0,ifelse(data1$anger_3=="A little",1,ifelse(data1$anger_3=="Moderately",2,ifelse(data1$anger_3=="Quite a lot",3,ifelse(data1$anger_3=="Extremely",4,NA)))))
+data1$anger_index<-rowSums(data1[, c("anger_1_n", "anger_2_n", "anger_3_n")], na.rm = FALSE)
+
+data2$anger_1_n<-ifelse(data2$anger_1=="Very slightly or not at all",0,ifelse(data2$anger_1=="A little",1,ifelse(data2$anger_1=="Moderately",2,ifelse(data2$anger_1=="Quite a lot",3,ifelse(data2$anger_1=="Extremely",4,NA)))))
+data2$anger_2_n<-ifelse(data2$anger_2=="Very slightly or not at all",0,ifelse(data2$anger_2=="A little",1,ifelse(data2$anger_2=="Moderately",2,ifelse(data2$anger_2=="Quite a lot",3,ifelse(data2$anger_2=="Extremely",4,NA)))))
+data2$anger_3_n<-ifelse(data2$anger_3=="Very slightly or not at all",0,ifelse(data2$anger_3=="A little",1,ifelse(data2$anger_3=="Moderately",2,ifelse(data2$anger_3=="Quite a lot",3,ifelse(data2$anger_3=="Extremely",4,NA)))))
+data2$anger_index<-rowSums(data2[, c("anger_1_n", "anger_2_n", "anger_3_n")], na.rm = FALSE)
+
+#Manipulation check (man_check)
+data1$pass_manipcheckstrict<-ifelse((data1$man_check=="Yes"&data1$treatment=="empathetic")|(data1$man_check=="No"&data1$treatment=="control")|(data1$man_check=="No"&data1$treatment=="placebo"),1,0) #strict rule
+data1$pass_manipchecklax<-ifelse((data1$man_check=="Yes"&data1$treatment=="empathetic")|(data1$man_check=="No"&data1$treatment=="control")|(data1$man_check=="No"&data1$treatment=="placebo")|(data1$man_check=="Not sure"&data1$treatment=="empathetic")|(data1$man_check=="Not sure"&data1$treatment=="placebo"),1,0) #lax rule
+#Peers -- extent see other mturkers as peers, learn or gather info from other mturkers, value other mturkers' opinions
+data1$peers_1<-factor(data1$peers_1,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data1$peers_1n<-ifelse(data1$peers_1=="Strongly disagree",0,ifelse(data1$peers_1=="Disagree",1,ifelse(data1$peers_1=="Neither agree nor disagree",2,ifelse(data1$peers_1=="Agree",3,ifelse(data1$peers_1=="Strongly agree",4,NA)))))
+data1$peers_2<-factor(data1$peers_2,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data1$peers_2n<-ifelse(data1$peers_2=="Strongly disagree",0,ifelse(data1$peers_2=="Disagree",1,ifelse(data1$peers_2=="Neither agree nor disagree",2,ifelse(data1$peers_2=="Agree",3,ifelse(data1$peers_2=="Strongly agree",4,NA)))))
+data1$peers_3<-factor(data1$peers_3,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data1$peers_3n<-ifelse(data1$peers_3=="Strongly disagree",0,ifelse(data1$peers_3=="Disagree",1,ifelse(data1$peers_3=="Neither agree nor disagree",2,ifelse(data1$peers_3=="Agree",3,ifelse(data1$peers_3=="Strongly agree",4,NA)))))
+data1$peers_index<-rowSums(data1[, c("peers_1n", "peers_2n", "peers_3n")], na.rm = FALSE)
+
+data2$peers_1<-factor(data2$peers_1,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data2$peers_1n<-ifelse(data2$peers_1=="Strongly disagree",0,ifelse(data2$peers_1=="Disagree",1,ifelse(data2$peers_1=="Neither agree nor disagree",2,ifelse(data2$peers_1=="Agree",3,ifelse(data2$peers_1=="Strongly agree",4,NA)))))
+data2$peers_2<-factor(data2$peers_2,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data2$peers_2n<-ifelse(data2$peers_2=="Strongly disagree",0,ifelse(data2$peers_2=="Disagree",1,ifelse(data2$peers_2=="Neither agree nor disagree",2,ifelse(data2$peers_2=="Agree",3,ifelse(data2$peers_2=="Strongly agree",4,NA)))))
+data2$peers_3<-factor(data2$peers_3,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data2$peers_3n<-ifelse(data2$peers_3=="Strongly disagree",0,ifelse(data2$peers_3=="Disagree",1,ifelse(data2$peers_3=="Neither agree nor disagree",2,ifelse(data2$peers_3=="Agree",3,ifelse(data2$peers_3=="Strongly agree",4,NA)))))
+data2$peers_index<-rowSums(data2[, c("peers_1n", "peers_2n", "peers_3n")], na.rm = FALSE)
+
+#Trump approval (measured post DV)
+data1$trump_approval_n<-ifelse(data1$trump_approval=="Disapprove extremely strongly",0,ifelse(data1$trump_approval=="Disapprove moderately strongly",1,ifelse(data1$trump_approval=="Disapprove slightly",2,ifelse(data1$trump_approval=="Neither approve nor disapprove",3,ifelse(data1$trump_approval=="Approve slightly",4,ifelse(data1$trump_approval=="Approve moderately strongly",5,ifelse(data1$trump_approval=="Approve extremely strongly",6,NA))))))) #numeric
+#Image information: image race/emotion
+data1$Image_race<-substr(data1$ImageName, 1, 1)
+data1$Image_raceBH<-ifelse(data1$Image_race=="B"|data1$Image_race=="L",1,ifelse(data1$Image_race=="W",0,NA))
+data1$Image_emotion<-substr(data1$ImageName, 2, 2)
+
+data2$Image_race<-substr(data2$ImageName, 1, 1)
+data2$Image_raceBH<-ifelse(data2$Image_race=="B"|data2$Image_race=="L",1,ifelse(data2$Image_race=="W",0,NA))
+data2$Image_emotion<-substr(data2$ImageName, 2, 2) 
+
+### DVs ###
+# 1) EmpathyBehavior: Behavioral empathy task
+data1$empathytask<-ifelse(data1$cards1=="IM_et9Fsf1O3VPwxnw",0,ifelse(data1$cards1=="IM_01Di3evwDTtxlFs",1,NA)) #"IM_et9Fsf1O3VPwxnw" is for describe=0, and "IM_01Di3evwDTtxlFs" is feel=1
+data2$empathytask<-ifelse(data2$cards1=="IM_et9Fsf1O3VPwxnw",0,ifelse(data2$cards1=="IM_01Di3evwDTtxlFs",1,NA)) 
+# 2) EmpathySelf: Self-reported empathy --  combine the responses to the statements into a single “Self-reported empathy” outcome measure (normalizing each and adding to an index taking values from 0 to 3).
+  #EmpathySelfPre and Post
+data1$pre_empathyself1<-ifelse(data1$empathyself1=="Strongly disagree",0,ifelse(data1$empathyself1=="Disagree",1,ifelse(data1$empathyself1=="Neither agree nor disagree",2,ifelse(data1$empathyself1=="Agree",3,ifelse(data1$empathyself1=="Strongly agree",4,NA)))))/4
+data2$pre_empathyself1<-ifelse(data2$empathyself1=="Strongly disagree",0,ifelse(data2$empathyself1=="Disagree",1,ifelse(data2$empathyself1=="Neither agree nor disagree",2,ifelse(data2$empathyself1=="Agree",3,ifelse(data2$empathyself1=="Strongly agree",4,NA)))))/4
+
+data1$pre_empathyself2<-ifelse(data1$empathyself2=="Strongly disagree",0,ifelse(data1$empathyself2=="Disagree",1,ifelse(data1$empathyself2=="Neither agree nor disagree",2,ifelse(data1$empathyself2=="Agree",3,ifelse(data1$empathyself2=="Strongly agree",4,NA)))))/4
+data2$pre_empathyself2<-ifelse(data2$empathyself2=="Strongly disagree",0,ifelse(data2$empathyself2=="Disagree",1,ifelse(data2$empathyself2=="Neither agree nor disagree",2,ifelse(data2$empathyself2=="Agree",3,ifelse(data2$empathyself2=="Strongly agree",4,NA)))))/4
+
+data1$pre_empathyself3<-ifelse(data1$empathyself3=="Strongly disagree",0,ifelse(data1$empathyself3=="Disagree",1,ifelse(data1$empathyself3=="Neither agree nor disagree",2,ifelse(data1$empathyself3=="Agree",3,ifelse(data1$empathyself3=="Strongly agree",4,NA)))))/4
+data2$pre_empathyself3<-ifelse(data2$empathyself3=="Strongly disagree",0,ifelse(data2$empathyself3=="Disagree",1,ifelse(data2$empathyself3=="Neither agree nor disagree",2,ifelse(data2$empathyself3=="Agree",3,ifelse(data2$empathyself3=="Strongly agree",4,NA)))))/4
+
+# Sum the original index variables (raw scores)
+data1$pre_empathyselfindex <- rowSums(data1[, c("pre_empathyself1", "pre_empathyself2", "pre_empathyself3")], na.rm = FALSE)
+data2$pre_empathyselfindex <- rowSums(data2[, c("pre_empathyself1", "pre_empathyself2", "pre_empathyself3")], na.rm = FALSE)
+
+data1$post_empathyself1<-ifelse(data1$empathyself1b=="Strongly disagree",0,ifelse(data1$empathyself1b=="Disagree",1,ifelse(data1$empathyself1b=="Neither agree nor disagree",2,ifelse(data1$empathyself1b=="Agree",3,ifelse(data1$empathyself1b=="Strongly agree",4,NA)))))/4
+data2$post_empathyself1<-ifelse(data2$empathyself1b=="Strongly disagree",0,ifelse(data2$empathyself1b=="Disagree",1,ifelse(data2$empathyself1b=="Neither agree nor disagree",2,ifelse(data2$empathyself1b=="Agree",3,ifelse(data2$empathyself1b=="Strongly agree",4,NA)))))/4
+
+data1$post_empathyself2<-ifelse(data1$empathyself2b=="Strongly disagree",0,ifelse(data1$empathyself2b=="Disagree",1,ifelse(data1$empathyself2b=="Neither agree nor disagree",2,ifelse(data1$empathyself2b=="Agree",3,ifelse(data1$empathyself2b=="Strongly agree",4,NA)))))/4
+data2$post_empathyself2<-ifelse(data2$empathyself2b=="Strongly disagree",0,ifelse(data2$empathyself2b=="Disagree",1,ifelse(data2$empathyself2b=="Neither agree nor disagree",2,ifelse(data2$empathyself2b=="Agree",3,ifelse(data2$empathyself2b=="Strongly agree",4,NA)))))/4
+
+data1$post_empathyself3<-ifelse(data1$empathyself3b=="Strongly disagree",0,ifelse(data1$empathyself3b=="Disagree",1,ifelse(data1$empathyself3b=="Neither agree nor disagree",2,ifelse(data1$empathyself3b=="Agree",3,ifelse(data1$empathyself3b=="Strongly agree",4,NA)))))/4
+data2$post_empathyself3<-ifelse(data2$empathyself3b=="Strongly disagree",0,ifelse(data2$empathyself3b=="Disagree",1,ifelse(data2$empathyself3b=="Neither agree nor disagree",2,ifelse(data2$empathyself3b=="Agree",3,ifelse(data2$empathyself3b=="Strongly agree",4,NA)))))/4
+
+# Sum the original index variables (raw scores)
+data1$post_empathyselfindex <- rowSums(data1[, c("post_empathyself1", "post_empathyself2", "post_empathyself3")], na.rm = FALSE)
+data2$post_empathyselfindex <- rowSums(data2[, c("post_empathyself1", "post_empathyself2", "post_empathyself3")], na.rm = FALSE)
+
+# 3) Attitudinal Inclusion Index -- combine from social distance and thermometer: We combine Social Distance and Thermometer into a single Attitudinal Outcome Index in which Social Distance and Thermometer take on equal weight; the Index ranges from [0,2].
+
+#Social Distance (norm divided by 6 to have variable from 0-1)
+data1$pre_socialdist <- ifelse(data1$social_dis1=="None",0,ifelse(data1$social_dis1=="Visitors",1,ifelse(data1$social_dis1=="Citizens",2,ifelse(data1$social_dis1=="Coworkers",3,ifelse(data1$social_dis1=="Neighbors",4,ifelse(data1$social_dis1=="Friends",5,ifelse(data1$social_dis1=="Relatives",6,NA)))))))/6
+data2$pre_socialdist <- ifelse(data2$social_dis1=="None",0,ifelse(data2$social_dis1=="Visitors",1,ifelse(data2$social_dis1=="Citizens",2,ifelse(data2$social_dis1=="Coworkers",3,ifelse(data2$social_dis1=="Neighbors",4,ifelse(data2$social_dis1=="Friends",5,ifelse(data2$social_dis1=="Relatives",6,NA)))))))/6
+
+data1$post_socialdist <- ifelse(data1$social_dis2=="None",0,ifelse(data1$social_dis2=="Visitors",1,ifelse(data1$social_dis2=="Citizens",2,ifelse(data1$social_dis2=="Coworkers",3,ifelse(data1$social_dis2=="Neighbors",4,ifelse(data1$social_dis2=="Friends",5,ifelse(data1$social_dis2=="Relatives",6,NA)))))))/6
+data2$post_socialdist <- ifelse(data2$social_dis2=="None",0,ifelse(data2$social_dis2=="Visitors",1,ifelse(data1$social_dis2=="Citizens",2,ifelse(data2$social_dis2=="Coworkers",3,ifelse(data2$social_dis2=="Neighbors",4,ifelse(data2$social_dis2=="Friends",5,ifelse(data2$social_dis2=="Relatives",6,NA)))))))/6
+#Thermometer
+data1$pre_thermB<-as.numeric(data1$therm1_1)
+data1$pre_thermH<-as.numeric(data1$therm1_2)
+data1$pre_therm<-ifelse(is.na(data1$pre_thermB) | is.na(data1$pre_thermH), NA, (data1$pre_thermB+data1$pre_thermH) / 2)
+
+data1$post_thermB<-as.numeric(data1$therm2_1)
+data1$post_thermH<-as.numeric(data1$therm2_2)
+data1$post_therm<-ifelse(is.na(data1$post_thermB) | is.na(data1$post_thermH), NA, (data1$post_thermB+data1$post_thermH) / 2)
+
+data2$pre_thermB<-as.numeric(data2$therm1_1)
+data2$pre_thermH<-as.numeric(data2$therm1_2)
+data2$pre_therm<-ifelse(is.na(data2$pre_thermB) | is.na(data2$pre_thermH), NA, (data2$pre_thermB+data2$pre_thermH) / 2)
+data2$post_thermB<-as.numeric(data2$therm2_1)
+data2$post_thermH<-as.numeric(data2$therm2_2)
+data2$post_therm<-ifelse(is.na(data2$post_thermB) | is.na(data2$post_thermH), NA, (data2$post_thermB+data2$post_thermH) / 2)
+
+#norm to 0-1 variable
+data1$pre_therm<-data1$pre_therm/100
+data1$post_therm<-data1$post_therm/100
+data2$pre_therm<-data2$pre_therm/100
+data2$post_therm<-data2$post_therm/100
+
+# Create equal-weighted index (average of normalized values)
+data1$post_attitudinalindex <- rowSums(data1[, c("post_socialdist", "post_therm")], na.rm = FALSE)
+data1$pre_attitudinalindex <- rowSums(data1[, c("pre_socialdist", "pre_therm")], na.rm = FALSE)
+
+data2$post_attitudinalindex <- rowSums(data2[, c("post_socialdist", "post_therm")], na.rm = FALSE)
+data2$pre_attitudinalindex <- rowSums(data2[, c("pre_socialdist", "pre_therm")], na.rm = FALSE)
+
+# 4) Behavioral Inclusion-- donation and letter normalized and weighted equally
+  #Donation --sum donation_blm and donation_unidos
+data1$donation_blm<-as.numeric(data1$donation_blm_1)
+data1$donation_unidos<-as.numeric(data1$donation_unidos_1)
+data1$donation<-rowSums(data1[, c("donation_blm", "donation_unidos")], na.rm = FALSE)
+data2$donation_blm<-as.numeric(data2$donation_blm_1)
+data2$donation_unidos<-as.numeric(data2$donation_unidos_1)
+data2$donation<-rowSums(data2[, c("donation_blm", "donation_unidos")], na.rm = FALSE)
+  #Letter: will need to create robust version that checks letter content matches
+data1$letter<-ifelse(data1$letter=="Yes",1,ifelse(data1$letter=="No",0,NA))
+data2$letter<-ifelse(data2$letter=="Yes",1,ifelse(data2$letter=="No",0,NA))
+# Create equal-weighted index for Behavioral Inclusion
+data1$behavioralindex <- rowMeans(data1[, c("donation", "letter")], na.rm = FALSE)
+data2$behavioralindex <- rowMeans(data2[, c("donation", "letter")], na.rm = FALSE)
+#Mechanisms
+  #1) norms
+  #2) happy -- Happy
+
+
+#subset to white:
+data1White<-subset(data1,raceWhite==1)
+data2White<-subset(data2,raceWhite==1)
+
+#Save Data
+saveRDS(data1,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w1full.rds")) #study 1 wave 1 full
+saveRDS(data1White,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w1.rds")) #study 1 wave 1 white
+saveRDS(data2,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w2full.rds")) #study 1 wave 2 full
+saveRDS(data2White,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w2.rds")) #study 1 wave 2 white
+
+
+#Subset to White who see BH image
+data1White_BH<-subset(data1White,Image_raceBH==1)
+#Subset to White who see BH image
+data2White_BH<-subset(data2White,Image_raceBH==1)
+```
+
+### Balance tests
+
+* find covariates by-chance imbalanced --- we don't find imbalance in sex, age, education, party and income variables.
+
+```{r,eval=F}
+#Sex=sex,Age=age, Educ=education_level, Party=party, Income=income
+table_sex <- table(data1$sex, data1$treatment)
+res1<-chisq.test(table_sex)
+res2<-t.test(age ~ PraiseControl, data = data1)
+table_education <- table(data1$education, data1$treatment)
+res3<-chisq.test(table_education)
+table_party <- table(data1$party, data1$treatment)
+res4<-chisq.test(table_party)
+table_income <- table(data1$income, data1$treatment)
+res5<-chisq.test(table_income)
+ 
+results_df <- data.frame(
+  var      = c("sex","age","education","party","income"),
+  test     = c("chi-sq","t.test","chi-sq","chi-sq","chi-sq"),
+  test_val = c(res1$statistic, res2$statistic, res3$statistic, res4$statistic, res5$statistic),
+  pval     = c(res1$p.value, res2$p.value, res3$p.value, res4$p.value, res5$p.value)
+)
+
+# Output as LaTeX table (requires \usepackage{booktabs})
+kable(
+  results_df,
+  format   = "latex",
+  booktabs = TRUE,
+  digits   = 3,
+  col.names = c("Variable","Test","Statistic","p-value"),
+  caption  = "Balance Tests Study 1",
+  label    = "balance1"
+)
+#Table D.18 in Appendix
+```
+
+
+## Registered Hypothesis Tests 
+
+### H1: White respondents who receive peer praise are more likely to empathize with racial/ethnic outgroup members than respondents who do not receive peer praise.
+
+* We run this test on white respondents who see a racial/ethnic outgroup image
+* OLS coef test of Peer Praise on behavioral empathy task. Robustness check: OLS regression with controls for pre-treatment covariates that are imbalanced.
+```{r}
+#H1: DV is Behavioral Empathy
+h1_model<-lm(empathytask~PraiseControl,data=data1White_BH)
+summary(h1_model) #-0.01249, p=0.437
+confint(h1_model, level = 0.95) #-0.0440322 0.01904397
+#summary(lm(empathytask~PraisePlacebo,data=data1White_BH))
+```
+
+### H2: White respondents receiving peer praise are more likely to report empathizing with racial/ethnic outgroup members, compared to respondents who did not receive peer praise.
+
+* OLS coef test of Peer Praise on self- reported empathy, an index created from three agreement statements, normalized and summed.
+```{r}
+#H2: DV is Self Reported Empathy 
+h2_model<-lm(post_empathyselfindex~PraiseControl,data=data1White)
+summary(h2_model) #-0.010725,p=0.442    
+confint(h2_model, level = 0.95) #CIs for paper  -0.03808975 0.0166388
+#h2_model_robustness<-lm(post_empathyselfindex~PraiseControl*pre_empathyselfindex,data=data1White)
+#summary(h2_model_robustness) #not pre-registered just checking
+```
+
+### H3: White respondents who receive peer praise are more likely to act politically inclusively towards racial/ethnic outgroup members, compared to respondents who don’t receive peer praise.
+
+```{r}
+#H3: Political Inclusion
+h3_model<-lm(behavioralindex~PraiseControl,data=data1White)
+summary(h3_model)  #0.030553, p=0.00156
+confint(h3_model, level = 0.95) #CIs for paper 0.01162539 0.0494815
+#0.030553/ sd(data1White$behavioralindex, na.rm = TRUE) #the treatment increases the outcome by ~0.1 standard deviations.
+```
+
+Check based on disagreggated index: "donation", "letter"
+```{r}
+#donation
+h3_model_check1<-lm(donation~PraiseControl,data=data1White)
+summary(h3_model_check1)
+#letter
+h3_model_check2<-lm(letter~PraiseControl,data=data1White)
+summary(h3_model_check2)
+```
+
+Movement on index can likely largely be attributed to "letter".
+
+### H4: White respondents who receive peer praise are more likely to be attitudinally inclusive towards racial/ethnic outgroup members, compared to respondents who did not receive peer praise.
+
+*OLS coef test of Peer Praise on attitudinal index composed of social distance and thermometer outcomes, normalized and weighted equally. Robustness check adds pretreatment attitudinal index.
+
+```{r}
+#H4: DV is Attitudinal Inclusion
+h4_model<-lm(post_attitudinalindex~PraiseControl,data=data1White)
+summary(h4_model) #-0.003050, p=0.563
+confint(h4_model, level = 0.95) #-0.01340106 0.007300161
+#Robustness check: appears in text for interaction
+h4_model_robustnesscheck<-lm(post_attitudinalindex~PraiseControl*pre_attitudinalindex,data=data1White)
+summary(h4_model_robustnesscheck)#0.05773, p=0.00247
+confint(h4_model_robustnesscheck, level = 0.95) #0.02036909  0.09509890
+#size of effect (interacted treatment x attitudinal): 0.05773/sd(data1White$post_attitudinalindex,na.rm=T) = 0.339
+```
+
+Some evidence towards positive interaction effect of Peer Praise and Pre Attitudinal Index values (moderation effect) on Post Attitudinal Index values.
+
+
+Check based on disagreggated index: "post_socialdist", "post_therm"
+
+```{r}
+#Social distance
+h4_model_check1<-lm(post_socialdist~PraiseControl,data=data1White)
+summary(h4_model_check1)
+#Robustness check
+h4_model_check1robustness<-lm(post_socialdist~PraiseControl*pre_attitudinalindex,data=data1White)
+summary(h4_model_check1robustness)
+#Thermometer
+h4_model_check2<-lm(post_therm~PraiseControl,data=data1White)
+summary(h4_model_check2)
+#Robustness check
+h4_model_check2robustness<-lm(post_therm~PraiseControl*pre_attitudinalindex,data=data1White)
+summary(h4_model_check2robustness)
+```
+
+No marginal effects, but evidence positive moderation effect (Peer Praise * Pre Attitudinal Index) may derive in part from movement on Post Social Distance score.
+
+### H5: A week after intervention, white respondents who receive peer praise are more likely to choose to empathize with racial/ethnic outgroup members than respondents who do not receive peer praise.
+
+* OLS coef test of long-term Peer Praise on behavioral empathy task.
+* note we have attrition in wave 2 so we have to follow up in Attrition check section (finding from Attrition check: H5 treatment effect is not point identified and could be zero)
+
+```{r}
+#H5:DV is Long-run behavioral inclusion 
+h5_model <-lm(empathytask~PraiseControl,data=data2White_BH)
+summary(h5_model)#-0.04473 , p= 0.0116 
+confint(h5_model, level = 0.95) #-0.07946727 -0.01000086
+
+```
+
+Check on partisan disaggregation
+```{r}
+#H5:DV is Long-run behavioral inclusion 
+h5_model_check1<-lm(empathytask~PraiseControl*party,data=data2White_BH)
+summary(h5_model_check1)
+#summary(lm(empathytask~PraisePlacebo,data=data2White_BH))
+```
+
+Long-run negative treatment effect of Peer Praise on behavioral empathy estimated if not accounting for attrition --- in attrition check section we find that in our *registered Manski bound calculations H5 is a null*; non-registered exploratory test suggests moderation by party.
+
+
+### H6: A week after intervention, white respondents who receive peer praise rate attitudinal index higher towards racial/ethnic outgroup members than respondents who do not receive peer praise.
+
+* OLS coef test of long-run Peer Praise on attitudinal index. Robustness check adds pretreatment attitudinal index.
+
+```{r}
+#H6:DV is Long-run attitudinal inclusion
+h6_model<-lm(post_attitudinalindex~PraiseControl,data=data2White)
+summary(h6_model)# 0.001415, p=0.814
+confint(h6_model, level = 0.95) # -0.01040298 0.01323238
+#Robustness check: appears in text for interaction
+h6_model_robustnesscheck<-lm(post_attitudinalindex~PraiseControl*pre_attitudinalindex,data=data2White)
+summary(h6_model_robustnesscheck) #beta 0.07244 p=0.0188
+confint(h6_model_robustnesscheck, level = 0.95) # 0.01203323  0.13285596 on treatXpre_attit
+```
+
+No marginal effects, but evidence positive moderation effect (Peer Praise * Pre Attitudinal Index) on long-run Post Attitudinal Index. In attrition check section we find that in our *registered Manski bound calculations H6 is still a null*;
+
+
+Check based on disagreggated index: "post_socialdist", "post_therm"
+```{r}
+#Social distance
+h6_model_check1<-lm(post_socialdist~PraiseControl,data=data2White)
+summary(h6_model_check1)
+  #Robustness check
+h6_model_check2<-lm(post_socialdist~PraiseControl*pre_attitudinalindex,data=data2White)
+summary(h6_model_check2)
+#Thermometer
+h6_model_check3<-lm(post_therm~PraiseControl,data=data2White)
+summary(h6_model_check3)
+  #Robustness check
+h6_model_check4<-lm(post_therm~PraiseControl*pre_attitudinalindex,data=data2White)
+summary(h6_model_check4)
+```
+
+Again, while no marginal effects, but evidence long-term positive moderation effect (Peer Praise * Pre Attitudinal Index) may derive in part from movement on Post Social Distance score.
+
+### MH adjusted p-values
+
+* Benjamini-Hochberg multiple-hypothesis adjustments H1-H6
+
+```{r}
+# Extract p-values for the PraiseControl coefficient from each model
+pvals <- c(
+  summary(h1_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h2_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h3_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h4_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h5_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h6_model)$coefficients["PraiseControl", "Pr(>|t|)"]
+)
+
+# Apply Benjamini-Hochberg (FDR) correction
+pvals_BH <- p.adjust(pvals, method = "BH")
+
+# Print both raw and adjusted p-values
+presult1 <- data.frame(
+  hypothesis = paste0("hypothesis", 1:6),
+  raw_p = pvals,
+  BH_adjusted_p = pvals_BH
+)
+ 
+cat("BH adjusted hypothesis tests and adjusted p-values:\n")
+presult1
+```
+
+
+Hypotheses 3 and 5 are supported with BH MH adjustments. However, note we have to verify with Manski bounds in our Attrition check section whether the H5 is supported once accounting for attrition (we find that the H5 treatment effect is not point identified and could be zero).
+
+In the below, we use the same models, except for H4 and H6 we use the robustness check versions of the models (inclusive of pre-attitudinal index) and find that the pre-attitudinal index *positively moderates* the treatment effect on short and long-term attitudinal inclusion, passing BH tests.
+
+```{r}
+# The same, but use the version models for H4, H6 that include pre-attitudinal (as pre-registered for robustness check)--- 
+# Extract p-values for the PraiseControl coefficient from each model
+pvals <- c(
+  summary(h1_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h2_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h3_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h4_model_robustnesscheck)$coefficients["PraiseControl:pre_attitudinalindex", "Pr(>|t|)"],
+  summary(h5_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h6_model_robustnesscheck)$coefficients["PraiseControl:pre_attitudinalindex", "Pr(>|t|)"]
+)
+
+# Apply Benjamini-Hochberg (FDR) correction
+pvals_BH <- p.adjust(pvals, method = "BH")
+
+# Print both raw and adjusted p-values
+result <- data.frame(
+  hypothesis = paste0("hypothesis", 1:6),
+  raw_p = pvals,
+  BH_adjusted_p = pvals_BH
+)
+cat("BH adjusted hypothesis tests (robustness versions included) and adjusted p-values:\n")
+result
+```
+
+
+
+### Attrition check
+
+* We examine whether we have between-study attrition from wave1 to wave2
+* Given we find roughly 10% attrition, we further conduct Manski bound estimations for the treatment effects of our H5 and H6 hypotheses.
+
+```{r}
+
+#How many respondents attrited from Wave 1 to Wave 2? 0.09694455 (we were able to follow-up with 90%)
+1-nrow(data2)/nrow(data1) #1- 4789/5303
+
+#Differential follow-up in Wave 2 via treatment status?
+t.test(data1$wave2_present~data1$PraiseControl,data=data1)
+
+```
+
+We recapture 90% of respondents from Wave 1 in Wave 2, with a low attrition rate of 10%. Because of attrition from Wave 1 to Wave 2 in Study 1, we calculate pre-registered Manski bounds for our long-run effects H5 and H6. 
+
+
+#### H5 Manski bound
+
+```{r}
+##H5:DV is Long-run behavioral inclusion: h5_model <-lm(empathytask~PraiseControl,data=data2White_BH)
+
+#Variables needed: Y (outcome, NA if missing), Z treatment indicator, R observed response indicator
+mb_data<-data.frame(Y=rep(NA,nrow(data1)),Z=data1$treatment,R=data1$wave2_present,keyID=data1$keyID,raceWhite=data1$raceWhite,Image_raceBH=data1$Image_raceBH)
+idx <- match(mb_data$keyID, data2$keyID)      # NA where no match
+mb_data$Y[!is.na(idx)] <- data2$empathytask[idx[!is.na(idx)]]
+
+#subset only to white respondents who see outgroup faces for H5, set peer praise=1, control=0
+mb_data<-subset(mb_data,raceWhite==1&Image_raceBH==1&(Z=="control"|Z=="empathetic"))
+mb_data$Z<-ifelse(mb_data$Z=="empathetic",1,ifelse(mb_data$Z=="control",0,NA))
+## set up manski bounds:
+# Set bounds for Y:
+a <- 0   # lower bound of Y 
+b <- 1   # upper bound of Y 
+
+df <- data.frame(Z = mb_data$Z, Y = mb_data$Y)
+bounds <- compute_manski_bounds(df, a = 0, b = 1)
+print(bounds)
+
+# Calculate bootstrapped CIs
+boot_res <- bootstrap_manski(df, a = 0, b = 1, Rboot = 5000, seed = 101)
+print(boot_res$point)
+print(boot_res$ci_lower)
+print(boot_res$ci_upper)
+
+```
+
+Manski identified interval for the ATE is approximately [-0.263, 0.195], which contains zero. That means under the weakest assumptions (only that Y lies in the specified bounds) the data alone are consistent with negative effects, zero effect, or positive effects --- so the treatment effect is not point identified and could be zero.
+
+The bootstrap results add sampling uncertainty about those bound endpoints:
+
+The bootstrap percentile CI for the lower bound endpoint is about [-0.294, -0.233]. The data gives reasonably precise evidence that the lower bound is negative (i.e., even in the worst-case assignment of missing outcomes to minimize the ATE, the lower bound is likely negative).
+The bootstrap percentile CI for the upper bound endpoint is about [0.164, 0.224]. The upper bound is likely positive.
+Combining these: the identified set (the population Manski interval) lies roughly between a negative lower bound and a positive upper bound. Because zero lies inside that interval, we cannot rule out a zero treatment effect without further assumptions (e.g., MAR, monotone selection, or other restrictions). 
+
+#### H6 Manski bound
+
+```{r}
+#H6:DV is Long-run attitudinal inclusion h6_model<-lm(post_attitudinalindex~PraiseControl,data=data2White)#Variables needed: Y (outcome, NA if missing), Z treatment indicator, R observed response indicator
+mb_data<-data.frame(Y=rep(NA,nrow(data1)),Z=data1$treatment,R=data1$wave2_present,keyID=data1$keyID,raceWhite=data1$raceWhite,Image_raceBH=data1$Image_raceBH)
+idx <- match(mb_data$keyID, data2$keyID)      # NA where no match
+mb_data$Y[!is.na(idx)] <- data2$post_attitudinalindex[idx[!is.na(idx)]]
+
+#subset only to white respondents H6, set peer praise=1, control=0
+mb_data<-subset(mb_data,raceWhite==1&(Z=="control"|Z=="empathetic"))
+mb_data$Z<-ifelse(mb_data$Z=="empathetic",1,ifelse(mb_data$Z=="control",0,NA))
+## set up manski bounds:
+# Set bounds for Y:
+a <- 0   # lower bound of Y 
+b <- 2   # upper bound of Y 
+
+df <- data.frame(Z = mb_data$Z, Y = mb_data$Y)
+bounds <- compute_manski_bounds(df, a = 0, b = 1)
+print(bounds) #ate_lower -0.224617 ate_upper 0.2265827
+
+# Calculate bootstrapped CIs
+boot_res <- bootstrap_manski(df, a = 0, b = 1, Rboot = 5000, seed = 101)
+print(boot_res$point)
+print(boot_res$ci_lower)
+print(boot_res$ci_upper)
+```
+
+Manski identified interval for the ATE is approximately [-0.22, 0.22], which contains zero. That means under the weakest assumptions (only that Y lies in the specified bounds) the data alone are consistent with negative effects, zero effect, or positive effects --- so the treatment effect is not point identified and could be zero.
+
+
+## Bayes Factor checks
+
+As noted in our registered protocol, we conduct Bayesian analysis for null treatment effects (H1, H2, H4, H6) using the "BayesFactor" package in R, using a noninformative Jeffreys prior on the variance of the normal population, and a Cauchy prior on the standardized effect size. We use standard ranges for Bayes Factors (BF) from Kass & Raftery 1995 for interpretation: BFs<1 as evidence for null hypothesis, 1-3 as anecdotal evidence for alternative hypothesis, 3-10 as moderate evidence for alternative, 10-30 as strong evidence for alternative, 30-100 as very strong evidence for alternative, and BF-100 as extreme evidence for alternative.
+
+### H1 BF check
+```{r}
+#H1: DV is Behavioral Empathy: h1_model<-lm(empathytask~PraiseControl,data=data1White_BH)
+# Run the Bayesian linear model: remove NAs in predictors 
+bf_result <- lmBF(empathytask ~ PraiseControl, data = subset(data1White_BH,treatment!="placebo"), 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+
+### H2 BF check
+```{r}
+#H2: DV is Self Reported Empathy : h2_model<-lm(post_empathyselfindex~PraiseControl,data=data1White)
+# Run the Bayesian linear model: remove NAs in predictors 
+bf_result <- lmBF(post_empathyselfindex ~ PraiseControl, data = subset(data1White,treatment!="placebo"), 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+
+### H4 BF check
+```{r}
+#H4: Attitudinal Inclusion: h4_model<-lm(post_attitudinalindex~PraiseControl,data=data1White)
+# Run the Bayesian linear model: remove NAs in predictors 
+bf_result <- lmBF(post_attitudinalindex ~ PraiseControl, data = subset(data1White,treatment!="placebo"), 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+
+
+### H6 BF check
+```{r}
+#H6:Long-run attitudinal inclusion: h6_model<-lm(post_attitudinalindex~PraiseControl,data=data2White)
+# Run the Bayesian linear model: remove NAs in predictors / outcome (3 obs)
+tmp<-subset(data2White,treatment!="placebo")
+tmp<-subset(tmp,select=c("post_attitudinalindex","PraiseControl"))
+tmp <- tmp[complete.cases(tmp), ]
+bf_result <- lmBF(post_attitudinalindex ~ PraiseControl, data = tmp, 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+
+We find evidence for null hypotheses H1, H2, H4 and H6.
+
+
+## Mechanism tests
+
+To assess our proposed mechanisms for H3 and H5, for which we find MH-adjusted effects of peer praise, we both measure respondents’ level of happiness and their perceptions of norms around empathy, as well as use the longitudinal study to calibrate the plausibility of different causal paths. To the latter point, any average treatment effect (ATE) found in the longitudinal follow-up is less likely to be driven by (fleeting) positive emotions induced by our intervention.
+
+* norms
+* happy
+
+H3 Mediation
+```{r,echo=TRUE,eval=TRUE,message=FALSE,warning=FALSE}
+#H3: Behavioral Inclusion: h3_model<-lm(behavioralindex~PraiseControl,data=data1White) 
+set.seed(123)
+##norms
+norms_med <- lm(norms_n~PraiseControl,data=data1White)
+
+norms_out <- lm(behavioralindex~PraiseControl + norms_n, data = data1White)
+
+mediation_norms <- mediate(norms_med, norms_out, treat = "PraiseControl", 
+                                mediator = "norms_n", dropobs=TRUE, 
+                                boot=TRUE, conf.level=.95)
+
+sens.out <- medsens(mediation_norms, rho.by = 0.1, effect.type = "both") 
+
+summary(mediation_norms)
+par(mar=c(5,6.5,3.2,01))
+plot(mediation_norms, labels=c("ACME\n(Norms)",
+                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+
+# save plot to PDF: Appendix Figure D.42
+pdf(here::here("NHB figures/si_fig42_med_norms.pdf"), width = 7, height = 5) 
+par(mar = c(5, 6.5, 3.2, 0.1))
+plot(mediation_norms, labels = c("ACME\n(Norms)",
+                                 "Direct Effect \n(Behavioral Inclusion Index)",
+                                 "Total Effect"))
+dev.off()
+
+# plot(sens.out, sign.prod="positive", sens.par = "R2", r.type = c("residual"), 
+#      xlab="Proportion of Total Variance in M \nExplained by Confounder", 
+#      ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(a)")
+# 
+# plot(sens.out, sign.prod="negative", sens.par = "R2", r.type = c("residual"), 
+#      xlab="Proportion of Total Variance in M \nExplained by Confounder", 
+#      ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(b)")
+
+##happy
+happy_med <- lm(Happy_index~PraiseControl, 
+                     data=data1White)
+
+happy_out <- lm(behavioralindex~PraiseControl + Happy_index, data = data1White)
+
+mediation_happy <- mediate(happy_med, happy_out, treat = "PraiseControl", 
+                                mediator = "Happy_index", dropobs=TRUE, 
+                                boot=TRUE, conf.level=.95)
+
+sens.out <- medsens(mediation_happy, rho.by = 0.1, effect.type = "both") 
+
+summary(mediation_happy)
+par(mar=c(5,6.5,3.2,01))
+plot(mediation_happy, labels=c("ACME\n(Happiness)",
+                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+# save plot to PDF: Appendix Figure D.43
+pdf(here::here("NHB figures/si_fig43_med_happy.pdf"), width = 7, height = 5) 
+par(mar=c(5,6.5,3.2,01))
+plot(mediation_happy, labels=c("ACME\n(Happiness)",
+                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+dev.off()
+# plot(sens.out, sign.prod="positive", sens.par = "R2", r.type = c("residual"), 
+#      xlab="Proportion of Total Variance in M \nExplained by Confounder", 
+#      ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(a)")
+# 
+# plot(sens.out, sign.prod="negative", sens.par = "R2", r.type = c("residual"), 
+#      xlab="Proportion of Total Variance in M \nExplained by Confounder", 
+#      ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(b)")
+
+```
+
+We do not find evidence for norms or elicited happiness serving as mediators for the (+) peer praise treatment effect on behavioral inclusion.
+
+## Figure 7
+
+```{r}
+# Define consistent colors (hex) — viridis-like palette adjusted:
+cols <- viridis(n = 3,option="D") 
+models <- list(h1_model, h2_model, h3_model, h4_model,h5_model,h6_model)
+# Extract PraiseControl coef and 95% CI for each model
+coef_df <- lapply(seq_along(models), function(i) {
+  m <- models[[i]]
+  td <- broom::tidy(m, conf.int = TRUE, conf.level = 0.95)
+  row <- td %>% filter(term == "PraiseControl")
+  if (nrow(row) == 0) {
+    stop(paste0("Coefficient 'PraiseControl' not found in model ", i))
+  }
+  data.frame(
+    H = paste0("H", i),
+    estimate = row$estimate,
+    conf.low = row$conf.low,
+    conf.high = row$conf.high,
+    stringsAsFactors = FALSE
+  )
+}) %>% bind_rows()
+
+# Override H5 confidence interval with Manski bound interval [-0.263, 0.195]
+coef_df <- coef_df %>%
+  mutate(
+    conf.low = ifelse(H == "H5", -0.263, conf.low),
+    conf.high = ifelse(H == "H5",  0.195, conf.high)
+  )
+# Override H6 confidence interval with Manski bound interval #ate_lower -0.224617 ate_upper 0.2265827
+coef_df <- coef_df %>%
+  mutate(
+    conf.low = ifelse(H == "H6", -0.225, conf.low),
+    conf.high = ifelse(H == "H6",  0.227, conf.high)
+  )
+
+
+# Replace H labels with full descriptive labels
+label_map <- c(
+  H1 = "H1: Behavioral Empathy",
+  H2 = "H2: Self Reported Empathy",
+  H3 = "H3: Behavioral Inclusion",
+  H4 = "H4: Attitudinal Inclusion",
+  H5 = "H5: Behavioral Inclusion",
+  H6 = "H6: Attitudinal Inclusion"
+)
+coef_df <- coef_df %>%
+  mutate(H_label = label_map[H])
+
+# Order factor so H1 at top and H6 at bottom
+coef_df$H_label <- factor(coef_df$H_label, levels = rev(unname(label_map)))
+
+# Assign color group: H1-H4 = one color, H5-H6 = different color
+coef_df <- coef_df %>%
+  mutate(group = ifelse(H %in% c("H1","H2","H3","H4"), "short-term", "long-run"))
+
+# Plot without numeric point estimate labels
+p <- ggplot(coef_df, aes(x = estimate, y = H_label, color = group)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray60") +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.25, size = 0.9) +
+  geom_point(size = 3.5) +
+  scale_color_manual(
+    values = c("short-term" = "#440154FF", "long-run" = "#FDE725FF"),
+    labels = c("short-term" = "Short term",
+               "long-run"   = "Long term")
+  )  +
+  labs(x = "Average Treatment Effect", y = NULL,
+       color = NULL,
+       title = "") +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "bottom",
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank())
+
+# Expand x-axis a bit so error bars are not cut off
+x_range <- range(coef_df$conf.low, coef_df$conf.high, coef_df$estimate)
+xpad <- diff(x_range) * 0.15
+p <- p + scale_x_continuous(limits = c(x_range[1] - xpad, x_range[2] + xpad), labels = comma)
+
+# Print plot
+print(p)
+
+ggsave(p,file=here::here("NHB figures","Fig7.pdf"),width=6,height=5)
+```
+
+Note H5 and H6 plots the Manski bounds on ATE.
+
+
+## Appendix Table Main Results H1-H6
+
+```{r} 
+
+#use presult1 -- MH adjusted pvalues 
+models <- list(h1_model, h2_model, h3_model, h4_model, h5_model, h6_model)
+
+# presult1 must be a data.frame with BH_adjusted_p in the same order as models
+# Prepare BH-adjusted p-values from presult1 (must be same order as models)
+adjp <- presult1$BH_adjusted_p
+ 
+# Add a row with the BH-adjusted p-values (formatted)
+add_line <- list(c("BH-adjusted p-value", formatC(adjp, format = "f", digits = 3)))
+col.labels <- paste("H",1:6,sep="")
+
+
+# Create the stargazer table and write to file
+stargazer(
+    models,
+    type = "latex",
+    out = "regression_table1.tex",
+    title = "H1-H6 models",
+    column.labels = col.labels,
+    dep.var.labels.include = FALSE,
+    covariate.labels = c("Intercept", "PeerPraise"),
+    keep.stat = c("n", "rsq"),
+    add.lines = add_line,
+    digits = 2,
+    single.row = TRUE,
+    no.space = TRUE, notes=c("Manski ATE intervals: H5=[-0.263, 0.195]; H6=[-0.22, 0.22]")
+)
+#Table D.19 in Appendix
+```
+
+## Robustness/Checks
+
+### Placebo analyses (alternative control condition)
+
+"To ensure that the average treatment effect of peer praise is not driven by extraneous elements of the praise intervention—e.g., the colors of the text—our main study includes a placebo arm in which respondents also receive peer praise, but for “description” rather than empathy. If the elements of the treatment that matter for promoting empathy are only presentational, then “praise for description” should also cause a higher likelihood of choosing to engage in empathy in our choice task. "
+
+```{r}
+#Placebo H1: DV is Behavioral Empathy
+placebo_h1_model<-lm(empathytask~PraisePlacebo,data=data1White_BH)
+summary(placebo_h1_model)
+#Placebo H2: DV is Self Reported Empathy 
+placebo_h2_model<-lm(post_empathyselfindex~PraisePlacebo,data=data1White)
+summary(placebo_h2_model)
+#Placebo H3: DV is Behavioral Inclusion
+placebo_h3_model<-lm(behavioralindex~PraisePlacebo,data=data1White)
+summary(placebo_h3_model)
+#Placebo H4: DV is Attitudinal Inclusion
+placebo_h4_model<-lm(post_attitudinalindex~PraisePlacebo,data=data1White)
+summary(placebo_h4_model) ## 
+  #Robustness check
+placebo_h4_model_robustnesscheck<-lm(post_attitudinalindex~PraisePlacebo*pre_attitudinalindex,data=data1White)
+summary(placebo_h4_model_robustnesscheck)
+#Placebo H5: Long-run behavioral inclusion 
+placebo_h5_model<-lm(empathytask~PraisePlacebo,data=data2White_BH)
+summary(placebo_h5_model)
+#Placebo H6: Long-run attitudinal inclusion
+placebo_h6_model<-lm(post_attitudinalindex~PraisePlacebo,data=data2White)
+summary(placebo_h6_model)
+  #Robustness check
+placebo_h6_model_robustnesscheck<-lm(post_attitudinalindex~PraisePlacebo*pre_attitudinalindex,data=data2White)
+summary(placebo_h6_model_robustnesscheck)
+```
+
+
+
+### Other emotions
+
+Exploratory analysis of emotional mechanisms for H3, for which we find MH-adjusted effects of peer praise: we both measure respondents’ level of anxiety and anger.
+
+* anxiety
+* anger
+
+H3 Mediation
+```{r,echo=TRUE,eval=TRUE,message=FALSE,warning=FALSE}
+set.seed(123)
+#H3: Behavioral Inclusion: h3_model<-lm(behavioralindex~PraiseControl,data=data1White) 
+
+##anxiety
+anxiety_med <- lm(anxiety_index~PraiseControl,data=data1White)
+
+anxiety_out <- lm(behavioralindex~PraiseControl + anxiety_index, data = data1White)
+
+mediation_anxiety <- mediate(anxiety_med, anxiety_out, treat = "PraiseControl", 
+                                mediator = "anxiety_index", dropobs=TRUE, 
+                                boot=TRUE, conf.level=.95)
+
+sens.out_anxiety <- medsens(mediation_anxiety, rho.by = 0.1, effect.type = "both") 
+
+summary(mediation_anxiety) #ACME            0.01875      0.01003         0.03  <2e-16 ***
+par(mar=c(5,6.5,3.2,01))
+plot(mediation_anxiety, labels=c("ACME\n(Anxiety)",
+                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+# save plot to PDF: Appendix Figure D.44
+pdf(here::here("NHB figures/si_fig44_med_anxiety.pdf"), width = 7, height = 5) 
+par(mar=c(5,6.5,3.2,01))
+plot(mediation_anxiety, labels=c("ACME\n(Anxiety)",
+                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+dev.off()
+
+# uncomment if you want the sensitivity plots
+#plot(sens.out_anxiety, sign.prod="positive", sens.par = "R2", r.type = c("residual"),
+     #xlab="Proportion of Total Variance in M \nExplained by Confounder",
+     #ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(a)")
+
+#plot(sens.out_anxiety, sign.prod="negative", sens.par = "R2", r.type = c("residual"),
+     #xlab="Proportion of Total Variance in M \nExplained by Confounder",
+     #ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(b)")
+
+##anger
+anger_med <- lm(anger_index~PraiseControl, 
+                     data=data1White)
+
+anger_out <- lm(behavioralindex~PraiseControl + anger_index, data = data1White)
+
+mediation_anger <- mediate(anger_med, anger_out, treat = "PraiseControl", 
+                                mediator = "anger_index", dropobs=TRUE, 
+                                boot=TRUE, conf.level=.95)
+
+sens.out_anger <- medsens(mediation_anger, rho.by = 0.1, effect.type = "both") 
+
+summary(mediation_anger)#0.01176      0.00355         0.02   0.012 *  
+par(mar=c(5,6.5,3.2,01))
+plot(mediation_anger, labels=c("ACME\n(Anger)",
+                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+# save plot to PDF: Appendix Figure D.45
+pdf(here::here("NHB figures/si_fig45_med_anger.pdf"), width = 7, height = 5) 
+par(mar=c(5,6.5,3.2,01))
+plot(mediation_anger, labels=c("ACME\n(Anger)",
+                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+dev.off()
+
+## uncomment if you want the sensitivity plots
+#plot(sens.out_anger, sign.prod="positive", sens.par = "R2", r.type = c("residual"), 
+     #xlab="Proportion of Total Variance in M \nExplained by Confounder", 
+     #ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(a)")
+
+#plot(sens.out_anger, sign.prod="negative", sens.par = "R2", r.type = c("residual"), 
+     #xlab="Proportion of Total Variance in M \nExplained by Confounder", 
+     #ylab="Proportion of Total Variance in Y \n Explained by Confounder", main="(b)")
+
+```
+
+We find exploratory evidence for anxiety/anger serving as mediators for the (+) peer praise treatment effect on behavioral inclusion.
+
+### Other HTEs
+
+#### Respondent Gender 
+Are there heterogeneous treatment effects by gender?
+
+```{r}
+#H1: DV is Behavioral Empathy
+check2_1<-lm(empathytask~PraiseControl*sex,data=data1White_BH)
+summary(check2_1)
+#H2: DV is Self Reported Empathy 
+check2_2<-lm(post_empathyselfindex~PraiseControl*sex,data=data1White)
+summary(check2_2)
+#H3: Behavioral Inclusion
+check2_3<-lm(behavioralindex~PraiseControl*sex,data=data1White)
+summary(check2_3)
+#H4: DV is Attitudinal Inclusion
+check2_4<-lm(post_attitudinalindex~PraiseControl*sex,data=data1White)
+summary(check2_4) 
+#H5:DV is Long-run behavioral inclusion 
+check2_5<-lm(empathytask~PraiseControl*sex,data=data2White_BH)
+summary(check2_5)
+#H6:DV is Long-run attitudinal inclusion
+check2_6<-lm(post_attitudinalindex~PraiseControl*sex,data=data2White)
+summary(check2_6) 
+```
+
+No evidence to support gender HTEs.
+
+#### Respondent Age 
+Are there heterogeneous treatment effects by age?
+
+```{r}
+#H1: DV is Behavioral Empathy
+check3_1<-lm(empathytask~PraiseControl*age,data=data1White_BH)
+summary(check3_1)
+#H2: DV is Self Reported Empathy 
+check3_2<-lm(post_empathyselfindex~PraiseControl*age,data=data1White)
+summary(check3_2)
+#H3: Behavioral Inclusion
+check3_3<-lm(behavioralindex~PraiseControl*age,data=data1White)
+summary(check3_3)
+#H4: DV is Attitudinal Inclusion
+check3_4<-lm(post_attitudinalindex~PraiseControl*age,data=data1White)
+summary(check3_4) 
+#H5:DV is Long-run behavioral inclusion 
+check3_5<-lm(empathytask~PraiseControl*age,data=data2White_BH)
+summary(check3_5)
+#H6:DV is Long-run attitudinal inclusion
+check3_6<-lm(post_attitudinalindex~PraiseControl*age,data=data2White)
+summary(check3_6) 
+```
+
+No evidence to support age HTEs.
+
+#### Respondent Education 
+Are there heterogeneous treatment effects by education?
+
+```{r}
+#H1: DV is Behavioral Empathy
+check4_1<-lm(empathytask~PraiseControl*education_level,data=data1White_BH)
+summary(check4_1)
+#H2: DV is Self Reported Empathy 
+check4_2<-lm(post_empathyselfindex~PraiseControl*education_level,data=data1White)
+summary(check4_2)
+#H3: Behavioral Inclusion
+check4_3<-lm(behavioralindex~PraiseControl*education_level,data=data1White)
+summary(check4_3)
+#H4: DV is Attitudinal Inclusion
+check4_4<-lm(post_attitudinalindex~PraiseControl*education_level,data=data1White)
+summary(check4_4) 
+#H5:DV is Long-run behavioral inclusion 
+check4_5<-lm(empathytask~PraiseControl*education_level,data=data2White_BH)
+summary(check4_5)
+#H6:DV is Long-run attitudinal inclusion
+check4_6<-lm(post_attitudinalindex~PraiseControl*education_level,data=data2White)
+summary(check4_6) 
+```
+
+No evidence to support education HTEs.
+
+
+### Did respondents engage in empathy more with white faces?
+
+```{r}
+#In H1 we tested if, among White respondents seeing BH image, peer praise could influence willingness to engage in behavioral empathy (empathy task). 
+checkdata<-data1White
+checkdata$Image_race<-factor(checkdata$Image_race,levels=c("B","L","W"))
+
+#Broken down by W or BL faces
+check1<-lm(empathytask~PraiseControl*Image_raceBH,data=checkdata)
+summary(check1)
+
+#Broken down by B, L, W faces
+check1<-lm(empathytask~PraiseControl*Image_race,data=checkdata)
+summary(check1)
+
+```
+
+Respondents did engage in empathy more with White and Latino faces than with Black faces. 
+
+Is this because Latino faces might have appeared more "white" or non-outgroup to White respondents? Yes, probably. The errors for mislabeling L were higher (70% wrong) than for mislabeling B (18%) or W (6%), and when they were wrong they erred on labeling as W instead. 
+
+```{r}
+table(data1$ver_face,data1$Image_race)
+```
+
+
+
+
+# Study 2
+
+
+Co-Partisan Peer Praise effects on Racial/Ethnic Outgroup Inclusion
+
+## Clean preprocess data
+
+```{r}
+#Clean data
+data3 <- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","Study2_August28.csv"),header=T, na.strings=c("", " ", "NA"))
+data3<-data3[-(1:2),] 
+
+#Screen out nonattentive and non-consenting
+#Consented 
+data3<-subset(data3,consent=="I agree to participate")
+
+#Pass Attention Checks
+data3$attentionMC<-ifelse(data3$attention_1=="Classified,None of the above",1,0)
+data3$attentionG<-ifelse((data3$attention_2_3=="Agree"|data3$attention_2_3=="Agree strongly")&data3$attention_2_5=="Neither agree nor disagree",1,0)
+data3$attentive<-rowSums(cbind(data3$attentionMC,data3$attentionG),na.rm=TRUE)
+data3<-subset(data3,attentive==2) #attentive
+
+
+#data3 error: a few MTurk_IDs took survey twice because of bug --- take first survey taken as only observation for these
+# Convert StartDate to POSIXct date-time
+data3$StartDate <- ymd_hms(data3$StartDate)
+# Keep only the first survey per MTurk_ID
+
+data3 <- data3 %>%
+  group_by(MTurk_ID) %>%
+  slice_min(StartDate) %>%
+  ungroup()
+
+#remove all MTurk ID traces --- can't share this publicly
+data3$MTurk_ID <- NULL
+
+#everyone who is Independent and receives "treatment" is actually receiving control -- recode
+data3$treatment<-ifelse(data3$party_id=="Independent","control",data3$treatment)
+
+## Save for public facing rds
+saveRDS(data3,file=here::here("NHB data/Study2.rds")) 
+data3<-readRDS(here::here("NHB data/Study2.rds")) 
+
+####################################################################### 
+###### CLEAN DATA -- PUBLIC DEIDENTIFIED VERSION STARTS HERE ##########
+####################################################################### 
+
+### Treatment ### 
+data3$PraiseControl<-ifelse(data3$treatment=="empathetic",1,ifelse(data3$treatment=="control",0,NA)) 
+
+### Covs ### 
+#Race
+data3$raceWhite<-ifelse(data3$race=="White, not-Hispanic",1,0)#not include multirace -- only strictly White 
+data3$raceBH <- ifelse(
+  grepl("Black or African American", data3$race) | 
+  grepl("Hispanic or Latino", data3$race),
+  1, ifelse(data3$raceWhite==1,0,NA)
+) #this variable is a binary capturing B/H versus White
+#Time
+data3$min<-as.numeric(data3$Duration..in.seconds.)/60 
+#Ethnocentrism: higher values more ethnocentric
+  #culturebackward
+data3$ethnocentrism_1n <- ifelse(data3$ethnocentrism_1=="Strongly disagree",0,ifelse(data3$ethnocentrism_1=="Disagree",1,ifelse(data3$ethnocentrism_1=="Neutral",2,ifelse(data3$ethnocentrism_1=="Agree",3,ifelse(data3$ethnocentrism_1=="Strongly agree",4,NA)))))
+  #rolemodel
+data3$ethnocentrism_2n <- ifelse(data3$ethnocentrism_2=="Strongly disagree",0,ifelse(data3$ethnocentrism_2=="Disagree",1,ifelse(data3$ethnocentrism_2=="Neutral",2,ifelse(data3$ethnocentrism_2=="Agree",3,ifelse(data3$ethnocentrism_2=="Strongly agree",4,NA)))))  
+  #actstrange
+data3$ethnocentrism_3n <- ifelse(data3$ethnocentrism_3=="Strongly disagree",0,ifelse(data3$ethnocentrism_3=="Disagree",1,ifelse(data3$ethnocentrism_3=="Neutral",2,ifelse(data3$ethnocentrism_3=="Agree",3,ifelse(data3$ethnocentrism_3=="Strongly agree",4,NA)))))  
+  #othersvalid --- reverse code
+data3$ethnocentrism_4n <- ifelse(data3$ethnocentrism_4=="Strongly disagree",4,ifelse(data3$ethnocentrism_4=="Disagree",3,ifelse(data3$ethnocentrism_4=="Neutral",2,ifelse(data3$ethnocentrism_4=="Agree",1,ifelse(data3$ethnocentrism_4=="Strongly agree",0,NA)))))  
+  #othersshouldbelikemine
+data3$ethnocentrism_5n <- ifelse(data3$ethnocentrism_5=="Strongly disagree",0,ifelse(data3$ethnocentrism_5=="Disagree",1,ifelse(data3$ethnocentrism_5=="Neutral",2,ifelse(data3$ethnocentrism_5=="Agree",3,ifelse(data3$ethnocentrism_5=="Strongly agree",4,NA)))))  
+  #notinterested
+data3$ethnocentrism_6n <- ifelse(data3$ethnocentrism_6=="Strongly disagree",0,ifelse(data3$ethnocentrism_6=="Disagree",1,ifelse(data3$ethnocentrism_6=="Neutral",2,ifelse(data3$ethnocentrism_6=="Agree",3,ifelse(data3$ethnocentrism_6=="Strongly agree",4,NA)))))  
+  #learnfromothers --- reverse code
+data3$ethnocentrism_7n <- ifelse(data3$ethnocentrism_7=="Strongly disagree",4,ifelse(data3$ethnocentrism_7=="Disagree",3,ifelse(data3$ethnocentrism_7=="Neutral",2,ifelse(data3$ethnocentrism_7=="Agree",1,ifelse(data3$ethnocentrism_7=="Strongly agree",0,NA)))))  
+  #dkwhatsgood 
+data3$ethnocentrism_8n <- ifelse(data3$ethnocentrism_8=="Strongly disagree",0,ifelse(data3$ethnocentrism_8=="Disagree",1,ifelse(data3$ethnocentrism_8=="Neutral",2,ifelse(data3$ethnocentrism_8=="Agree",3,ifelse(data3$ethnocentrism_8=="Strongly agree",4,NA)))))  
+
+data3$ethnocentrism_index<-rowSums(data3[, c("ethnocentrism_1n", "ethnocentrism_2n", "ethnocentrism_3n", "ethnocentrism_4n","ethnocentrism_5n","ethnocentrism_6n","ethnocentrism_7n","ethnocentrism_8n")], na.rm = FALSE)
+
+#Age
+data3$age<-as.numeric(data3$age) 
+#Sex
+data3$sex<-factor(data3$sex,levels=c("Female","Male","Non-binary","Other")) 
+#Educ: code a version that is up to and including HS, college of Assoc degree, beyond college code as L, M, H 
+data3$education_level <- sapply(data3$education, classify_education)
+data3$education_level <- factor(data3$education_level, levels = c("Low", "Medium", "High")) 
+#Political Party: code version D, I, R
+data3$party<-ifelse(data3$party_id=="Strong Democrat"|data3$party_id=="Democrat"|data3$party_id=="Lean Democrat","Democrat",ifelse(data3$party_id=="Strong Republican"|data3$party_id=="Republican"|data3$party_id=="Lean Republican","Republican",ifelse(data3$party_id=="Independent","Independent",NA)))
+data3$party<-factor(data3$party,levels=c("Republican","Independent","Democrat"))
+#Income
+income_levels <- c("Less than 25k", "25k to less than 50k", "50k to less than 75k", "75k to less than 100k", "100k or more")
+# Convert the income variable to an ordered factor
+data3$income <- factor(data3$income, levels = income_levels, ordered = TRUE) 
+
+#Baseline Empathy - Post11--Empathy Battery (measured post DV)
+  #inshoes
+data3$base_empathy1 <- as.numeric(gsub("\\D.*", "", data3$post11_1))
+  #imagineinplace
+data3$base_empathy2 <- as.numeric(gsub("\\D.*", "", data3$post11_2))
+  #tenderconcern
+data3$base_empathy3 <- as.numeric(gsub("\\D.*", "", data3$post11_3))
+  #protective
+data3$base_empathy4 <- as.numeric(gsub("\\D.*", "", data3$post11_4))
+  #emotional situation scares me: reverse code
+data3$base_empathy5 <- ifelse(data3$post11_5=="5\nDescribes me very well\n",1,ifelse(data3$post11_5=="4\nDescribes me\n",2,ifelse(data3$post11_5=="3\nSomewhat describes me\n",3,ifelse(data3$post11_5=="2\nDoes not describe me\n",4,ifelse(data3$post11_5=="1\nDoes not describe me well\n",5,NA)))))
+  #emergencypieces
+data3$base_empathy6 <- as.numeric(gsub("\\D.*", "", data3$post11_6))
+  #storynovel
+data3$base_empathy7 <- as.numeric(gsub("\\D.*", "", data3$post11_7))
+  #movie
+data3$base_empathy8 <- as.numeric(gsub("\\D.*", "", data3$post11_8))
+  #index
+data3$base_empathy <- rowSums(data3[, c("base_empathy1", "base_empathy2", "base_empathy3", "base_empathy4", "base_empathy5","base_empathy6","base_empathy7","base_empathy8")], na.rm = T)
+#Desirable to be empathetic (personal belief)
+data3$empathy_desirable <- ifelse(data3$post17=="Objectivity is much more desirable",0,ifelse(data3$post17=="Objectivity is more desirable",1,ifelse(data3$post17=="They are equally desirable",2,ifelse(data3$post17=="Empathy is more desirable",3,ifelse(data3$post17=="Empathy is much more desirable",4,NA)))))
+#Norms: how strongly agree/disagree people value empathetic behavior
+data3$norms_n<-ifelse(data3$norms=="Strongly disagree",0,ifelse(data3$norms=="Disagree",1,ifelse(data3$norms=="Neither agree nor disagree",2,ifelse(data3$norms=="Agree",3,ifelse(data3$norms=="Strongly agree",4,NA)))))
+ 
+#Emotions:
+  ##Happy: indiv vars numeric, and indexed together
+data3$Happy_1_n<-ifelse(data3$Happy_1=="Very slightly or not at all",0,ifelse(data3$Happy_1=="A little",1,ifelse(data3$Happy_1=="Moderately",2,ifelse(data3$Happy_1=="Quite a lot",3,ifelse(data3$Happy_1=="Extremely",4,NA)))))
+data3$Happy_2_n<-ifelse(data3$Happy_2=="Very slightly or not at all",0,ifelse(data3$Happy_2=="A little",1,ifelse(data3$Happy_2=="Moderately",2,ifelse(data3$Happy_2=="Quite a lot",3,ifelse(data3$Happy_2=="Extremely",4,NA)))))
+data3$Happy_3_n<-ifelse(data3$Happy_3=="Very slightly or not at all",0,ifelse(data3$Happy_3=="A little",1,ifelse(data3$Happy_3=="Moderately",2,ifelse(data3$Happy_3=="Quite a lot",3,ifelse(data3$Happy_3=="Extremely",4,NA)))))
+data3$Happy_index<-rowSums(data3[, c("Happy_1_n", "Happy_2_n", "Happy_3_n")], na.rm = FALSE)
+
+ 
+  ##anxiety
+data3$anxiety_1_n<-ifelse(data3$anxiety_1=="Very slightly or not at all",0,ifelse(data3$anxiety_1=="A little",1,ifelse(data3$anxiety_1=="Moderately",2,ifelse(data3$anxiety_1=="Quite a lot",3,ifelse(data3$anxiety_1=="Extremely",4,NA)))))
+data3$anxiety_2_n<-ifelse(data3$anxiety_2=="Very slightly or not at all",0,ifelse(data3$anxiety_2=="A little",1,ifelse(data3$anxiety_2=="Moderately",2,ifelse(data3$anxiety_2=="Quite a lot",3,ifelse(data3$anxiety_2=="Extremely",4,NA)))))
+data3$anxiety_3_n<-ifelse(data3$anxiety_3=="Very slightly or not at all",0,ifelse(data3$anxiety_3=="A little",1,ifelse(data3$anxiety_3=="Moderately",2,ifelse(data3$anxiety_3=="Quite a lot",3,ifelse(data3$anxiety_3=="Extremely",4,NA)))))
+data3$anxiety_index<-rowSums(data3[, c("anxiety_1_n", "anxiety_2_n", "anxiety_3_n")], na.rm = FALSE)
+
+  ##anger
+data3$anger_1_n<-ifelse(data3$anger_1=="Very slightly or not at all",0,ifelse(data3$anger_1=="A little",1,ifelse(data3$anger_1=="Moderately",2,ifelse(data3$anger_1=="Quite a lot",3,ifelse(data3$anger_1=="Extremely",4,NA)))))
+data3$anger_2_n<-ifelse(data3$anger_2=="Very slightly or not at all",0,ifelse(data3$anger_2=="A little",1,ifelse(data3$anger_2=="Moderately",2,ifelse(data3$anger_2=="Quite a lot",3,ifelse(data3$anger_2=="Extremely",4,NA)))))
+data3$anger_3_n<-ifelse(data3$anger_3=="Very slightly or not at all",0,ifelse(data3$anger_3=="A little",1,ifelse(data3$anger_3=="Moderately",2,ifelse(data3$anger_3=="Quite a lot",3,ifelse(data3$anger_3=="Extremely",4,NA)))))
+data3$anger_index<-rowSums(data3[, c("anger_1_n", "anger_2_n", "anger_3_n")], na.rm = FALSE)
+
+
+#Manipulation check (man_checkDEM,man_checkREP) -- checks only for Dem/Rep
+data3$pass_manipcheckstrict<-ifelse((data3$man_checkDEM=="Yes"&data3$treatment=="empathetic")|(data3$man_checkREP=="Yes"&data3$treatment=="empathetic")|(data3$man_checkDEM=="No"&data3$treatment=="control")|(data3$man_checkREP=="No"&data3$treatment=="control"),1,0) 
+
+#Peers -- extent see other mturkers as peers, learn or gather info from other mturkers, value other mturkers' opinions
+data3$peers_1<-factor(data3$peers_1,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data3$peers_1n<-ifelse(data3$peers_1=="Strongly disagree",0,ifelse(data3$peers_1=="Disagree",1,ifelse(data3$peers_1=="Neither agree nor disagree",2,ifelse(data3$peers_1=="Agree",3,ifelse(data3$peers_1=="Strongly agree",4,NA)))))
+data3$peers_2<-factor(data3$peers_2,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data3$peers_2n<-ifelse(data3$peers_2=="Strongly disagree",0,ifelse(data3$peers_2=="Disagree",1,ifelse(data3$peers_2=="Neither agree nor disagree",2,ifelse(data3$peers_2=="Agree",3,ifelse(data3$peers_2=="Strongly agree",4,NA)))))
+data3$peers_3<-factor(data3$peers_3,levels=c("Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"),ordered=T)
+data3$peers_3n<-ifelse(data3$peers_3=="Strongly disagree",0,ifelse(data3$peers_3=="Disagree",1,ifelse(data3$peers_3=="Neither agree nor disagree",2,ifelse(data3$peers_3=="Agree",3,ifelse(data3$peers_3=="Strongly agree",4,NA)))))
+data3$peers_index<-rowSums(data3[, c("peers_1n", "peers_2n", "peers_3n")], na.rm = FALSE)
+
+#Trump approval (measured post DV)
+data3$trump_approval_n<-ifelse(data3$trump_approval=="Disapprove extremely strongly",0,ifelse(data3$trump_approval=="Disapprove moderately strongly",1,ifelse(data3$trump_approval=="Disapprove slightly",2,ifelse(data3$trump_approval=="Neither approve nor disapprove",3,ifelse(data3$trump_approval=="Approve slightly",4,ifelse(data3$trump_approval=="Approve moderately strongly",5,ifelse(data3$trump_approval=="Approve extremely strongly",6,NA))))))) #numeric
+#Image information: image race/emotion
+data3$Image_race<-substr(data3$ImageName, 1, 1)
+data3$Image_raceBH<-ifelse(data3$Image_race=="B"|data3$Image_race=="L",1,ifelse(data3$Image_race=="W",0,NA))
+data3$Image_emotion<-substr(data3$ImageName, 2, 2)
+ 
+
+### DVs ###
+# 1) EmpathyBehavior: Behavioral empathy task
+data3$empathytask<-ifelse(data3$cards1=="IM_et9Fsf1O3VPwxnw",0,ifelse(data3$cards1=="IM_01Di3evwDTtxlFs",1,NA)) #"IM_et9Fsf1O3VPwxnw" is for describe=0, and "IM_01Di3evwDTtxlFs" is feel=1
+ 
+# 2) EmpathySelf: Self-reported empathy --  combine the responses to the statements into a single “Self-reported empathy” outcome measure (normalizing each and adding to an index taking values from 0 to 3).
+  #EmpathySelfPre and Post
+data3$pre_empathyself1<-ifelse(data3$empathyself1=="Strongly disagree",0,ifelse(data3$empathyself1=="Disagree",1,ifelse(data3$empathyself1=="Neither agree nor disagree",2,ifelse(data3$empathyself1=="Agree",3,ifelse(data3$empathyself1=="Strongly agree",4,NA)))))/4
+data3$pre_empathyself2<-ifelse(data3$empathyself2=="Strongly disagree",0,ifelse(data3$empathyself2=="Disagree",1,ifelse(data3$empathyself2=="Neither agree nor disagree",2,ifelse(data3$empathyself2=="Agree",3,ifelse(data3$empathyself2=="Strongly agree",4,NA)))))/4 
+data3$pre_empathyself3<-ifelse(data3$empathyself3=="Strongly disagree",0,ifelse(data3$empathyself3=="Disagree",1,ifelse(data3$empathyself3=="Neither agree nor disagree",2,ifelse(data3$empathyself3=="Agree",3,ifelse(data3$empathyself3=="Strongly agree",4,NA)))))/4 
+# Sum the original index variables (raw scores)
+data3$pre_empathyselfindex <- rowSums(data3[, c("pre_empathyself1", "pre_empathyself2", "pre_empathyself3")], na.rm = FALSE) 
+
+data3$post_empathyself1<-ifelse(data3$empathyself1b=="Strongly disagree",0,ifelse(data3$empathyself1b=="Disagree",1,ifelse(data3$empathyself1b=="Neither agree nor disagree",2,ifelse(data3$empathyself1b=="Agree",3,ifelse(data3$empathyself1b=="Strongly agree",4,NA)))))/4 
+data3$post_empathyself2<-ifelse(data3$empathyself2b=="Strongly disagree",0,ifelse(data3$empathyself2b=="Disagree",1,ifelse(data3$empathyself2b=="Neither agree nor disagree",2,ifelse(data3$empathyself2b=="Agree",3,ifelse(data3$empathyself2b=="Strongly agree",4,NA)))))/4 
+data3$post_empathyself3<-ifelse(data3$empathyself3b=="Strongly disagree",0,ifelse(data3$empathyself3b=="Disagree",1,ifelse(data3$empathyself3b=="Neither agree nor disagree",2,ifelse(data3$empathyself3b=="Agree",3,ifelse(data3$empathyself3b=="Strongly agree",4,NA)))))/4 
+# Sum the original index variables (raw scores)
+data3$post_empathyselfindex <- rowSums(data3[, c("post_empathyself1", "post_empathyself2", "post_empathyself3")], na.rm = FALSE) 
+
+# 3) Attitudinal Inclusion Index -- combine from social distance and thermometer: We combine Social Distance and Thermometer into a single Attitudinal Outcome Index in which Social Distance and Thermometer take on equal weight; the Index ranges from [0,2].
+
+#Social Distance (norm divided by 6 to have variable from 0-1)
+data3$pre_socialdist <- ifelse(data3$social_dis1=="None",0,ifelse(data3$social_dis1=="Visitors",1,ifelse(data3$social_dis1=="Citizens",2,ifelse(data3$social_dis1=="Coworkers",3,ifelse(data3$social_dis1=="Neighbors",4,ifelse(data3$social_dis1=="Friends",5,ifelse(data3$social_dis1=="Relatives",6,NA)))))))/6
+data3$post_socialdist <- ifelse(data3$social_dis2=="None",0,ifelse(data3$social_dis2=="Visitors",1,ifelse(data3$social_dis2=="Citizens",2,ifelse(data3$social_dis2=="Coworkers",3,ifelse(data3$social_dis2=="Neighbors",4,ifelse(data3$social_dis2=="Friends",5,ifelse(data3$social_dis2=="Relatives",6,NA)))))))/6
+ 
+#Thermometer
+data3$pre_thermB<-as.numeric(data3$therm1_1)
+data3$pre_thermH<-as.numeric(data3$therm1_2)
+data3$pre_therm<-ifelse(is.na(data3$pre_thermB) | is.na(data3$pre_thermH), NA, (data3$pre_thermB+data3$pre_thermH) / 2)
+
+data3$post_thermB<-as.numeric(data3$therm2_1)
+data3$post_thermH<-as.numeric(data3$therm2_2)
+data3$post_therm<-ifelse(is.na(data3$post_thermB) | is.na(data3$post_thermH), NA, (data3$post_thermB+data3$post_thermH) / 2)
+ 
+
+#norm to 0-1 variable
+data3$pre_therm<-data3$pre_therm/100
+data3$post_therm<-data3$post_therm/100 
+
+# Create equal-weighted index (average of normalized values)
+data3$post_attitudinalindex <- rowSums(data3[, c("post_socialdist", "post_therm")], na.rm = FALSE)
+data3$pre_attitudinalindex <- rowSums(data3[, c("pre_socialdist", "pre_therm")], na.rm = FALSE)
+ 
+# 4) Behavioral Inclusion-- donation and letter normalized and weighted equally
+  #Donation --sum donation_blm and donation_unidos
+data3$donation_blm<-as.numeric(data3$donation_blm_1)
+data3$donation_unidos<-as.numeric(data3$donation_unidos_1)
+data3$donation<-rowSums(data3[, c("donation_blm", "donation_unidos")], na.rm = FALSE)
+ 
+  #Letter: will need to create robust version that checks letter content matches
+data3$letter<-ifelse(data3$letter=="Yes",1,ifelse(data3$letter=="No",0,NA)) 
+# Create equal-weighted index for Behavioral Inclusion
+data3$behavioralindex <- rowMeans(data3[, c("donation", "letter")], na.rm = FALSE) 
+ 
+
+#subset to white, dems and reps (no independents):
+data3White<-subset(data3,raceWhite==1&(party=="Democrat"|party=="Republican")) 
+# Relevel the 'party' factor so that 'Republican' is the baseline
+data3White$party <- relevel(data3White$party, ref = "Republican")
+data3White$party <- droplevels(data3White$party)
+#Save Data
+saveRDS(data3,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study2full.rds")) #study 2 full
+saveRDS(data3White,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study2w.rds")) #study 2 white 
+
+
+#Subset to White who see BH image
+data3White_BH<-subset(data3White,Image_raceBH==1) 
+```
+
+
+### Balance tests
+
+* find covariates by-chance imbalanced --- we don't find imbalance in sex, age, education, party and income variables.
+
+```{r,eval=F}
+#Sex=sex,Age=age, Educ=education_level, Party=party, Income=income
+table_sex <- table(data3White$sex, data3White$treatment)
+chisq.test(table_sex)
+t.test(age ~ PraiseControl, data = data3White)
+table_education <- table(data3White$education, data3White$treatment)
+chisq.test(table_education)
+table_party <- table(data3White$party, data3White$treatment)
+chisq.test(table_party)
+table_income <- table(data3White$income, data3White$treatment)
+chisq.test(table_income)
+
+#Sex=sex,Age=age, Educ=education_level, Party=party, Income=income
+table_sex <- table(data3White$sex, data3White$treatment)
+res1<-chisq.test(table_sex)
+res2<-t.test(age ~ PraiseControl, data = data3White)
+table_education <- table(data3White$education, data3White$treatment)
+res3<-chisq.test(table_education)
+table_party <- table(data3White$party, data3White$treatment)
+res4<-chisq.test(table_party)
+table_income <- table(data3White$income, data3White$treatment)
+res5<-chisq.test(table_income)
+ 
+results_df <- data.frame(
+  var      = c("sex","age","education","party","income"),
+  test     = c("chi-sq","t.test","chi-sq","chi-sq","chi-sq"),
+  test_val = c(res1$statistic, res2$statistic, res3$statistic, res4$statistic, res5$statistic),
+  pval     = c(res1$p.value, res2$p.value, res3$p.value, res4$p.value, res5$p.value)
+)
+
+# Output as LaTeX table (requires \usepackage{booktabs})
+kable(
+  results_df,
+  format   = "latex",
+  booktabs = TRUE,
+  digits   = 3,
+  col.names = c("Variable","Test","Statistic","p-value"),
+  caption  = "Balance Tests Study 2",
+  label    = "balance2"
+)
+#Table E.20 in Appendix
+```
+
+
+## Registered Hypothesis Tests 
+
+* We won't do MH adjustments for H7-H10 because we don't find evidence towards rejecting null in these hypotheses.
+
+### H7: White respondents who receive co-partisan peer praise are more likely to empathize with racial/ethnic outgroup members than respondents who do not receive peer praise.
+
+
+* We run this test on white respondents who see a racial/ethnic outgroup image
+* OLS coef test of Co-partisan Peer Praise on behavioral empathy task. Robustness check: OLS regression with controls for pre-treatment covariates that are imbalanced.
+```{r}
+#H7: DV is Behavioral Empathy
+h7_model<-lm(empathytask~PraiseControl,data=data3White_BH)
+summary(h7_model)#0.006317, p=0.744 
+confint(h7_model, level = 0.95) #CIs for paper -0.03166975 0.04430418
+```
+
+Exploratory moderation test by Party:
+```{r}
+#appears in text for interaction
+h7_model_exp1<-lm(empathytask~PraiseControl*party,data=data3White_BH)
+summary(h7_model_exp1) #0.083764, p=0.0314
+confint(h7_model_exp1, level = 0.95) #CIs for paper 0.007458147 0.16006927
+```
+
+No general ATE, but HTE by party -- democrats more susceptible to co-partisan peer praise effect on behavioral empathy task for outgroup.
+
+### H8: White respondents receiving co-partisan peer praise are more likely to report empathizing with racial/ethnic outgroup members, compared to respondents who did not receive peer praise.
+
+* OLS coef test of Co-Partisan Peer Praise on self- reported empathy, an index created from three agreement statements, normalized and summed.
+```{r}
+#H8: DV is Self Reported Empathy 
+h8_model<-lm(post_empathyselfindex~PraiseControl,data=data3White)
+summary(h8_model) #-0.003875, p=0.809 
+confint(h8_model, level = 0.95) #CIs for paper -0.03529245 0.02754281
+#h8_model_robustness<-lm(post_empathyselfindex~PraiseControl*pre_empathyselfindex,data=data3White)
+```
+
+Exploratory moderation test by Party:
+```{r}
+h8_model_exp1<-lm(post_empathyselfindex~PraiseControl*party,data=data3White)
+summary(h8_model_exp1) 
+```
+
+No evidence of ATE or HTE by party.
+
+### H9: White respondents who receive co-partisan peer praise are more likely to behave politically inclusively towards racial/ethnic outgroup members, compared to respondents who don’t receive peer praise.
+
+
+```{r}
+#H9: Political Inclusion
+h9_model<-lm(behavioralindex~PraiseControl,data=data3White)
+summary(h9_model)#0.013904, p= 0.273    
+confint(h9_model, level = 0.95) #CIs for paper -0.01093955 0.03874666
+#summary(lm(behavioralindex~PraisePlacebo,data=data3White))
+```
+
+Exploratory moderation test by Party:
+
+```{r}
+#H9: Political Inclusion
+h9_model_exp1<-lm(behavioralindex~PraiseControl*party,data=data3White)
+summary(h9_model_exp1) 
+```
+
+No evidence of ATE or HTE by party.
+
+### H10: White respondents who receive co-partisan peer praise are more likely to be attitudinally inclusive towards racial/ethnic outgroup members, compared to respondents who did not receive peer praise.
+
+*OLS coef test of Peer Praise on attitudinal index composed of social distance and thermometer outcomes, normalized and weighted equally. Robustness check adds pretreatment attitudinal index.
+```{r}
+#H10: DV is Attitudinal Inclusion
+h10_model<-lm(post_attitudinalindex~PraiseControl,data=data3White)
+summary(h10_model)#-0.004113, p=0.455 
+confint(h10_model, level = 0.95) #CIs for paper -0.01489768 0.006671144
+#Robustness check
+h10_model_robustnesscheck<-lm(post_attitudinalindex~PraiseControl*pre_attitudinalindex,data=data3White) 
+summary(h10_model_robustnesscheck)
+```
+
+Exploratory moderation test by Party:
+```{r}
+#H10: DV is Attitudinal Inclusion
+h10_model_exp1<-lm(post_attitudinalindex~PraiseControl*party,data=data3White)
+summary(h10_model_exp1) 
+h10_model_exp1robust<-lm(post_attitudinalindex~PraiseControl*party*pre_attitudinalindex,data=data3White)
+summary(h10_model_exp1robust) 
+```
+
+No evidence of ATE or HTE by party.
+
+
+### MH adjusted p-values
+
+* Benjamini-Hochberg multiple-hypothesis adjustments H1-H6
+
+```{r}
+# Extract p-values for the PraiseControl coefficient from each model
+pvals <- c(
+  summary(h7_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h8_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h9_model)$coefficients["PraiseControl", "Pr(>|t|)"],
+  summary(h10_model)$coefficients["PraiseControl", "Pr(>|t|)"]
+)
+
+# Apply Benjamini-Hochberg (FDR) correction
+pvals_BH <- p.adjust(pvals, method = "BH")
+
+# Print both raw and adjusted p-values
+presult2 <- data.frame(
+  hypothesis = paste0("hypothesis", 7:10),
+  raw_p = pvals,
+  BH_adjusted_p = pvals_BH
+)
+ 
+cat("BH adjusted hypothesis tests and adjusted p-values:\n")
+presult2
+```
+## Bayes Factor checks
+
+As noted in our registered protocol, we conduct Bayesian analysis for null treatment effects (H7-H10) using the "BayesFactor" package in R, using a noninformative Jeffreys prior on the variance of the normal population, and a Cauchy prior on the standardized effect size. We use standard ranges for Bayes Factors (BF) from Kass & Raftery 1995 for interpretation: BFs<1 as evidence for null hypothesis, 1-3 as anecdotal evidence for alternative hypothesis, 3-10 as moderate evidence for alternative, 10-30 as strong evidence for alternative, 30-100 as very strong evidence for alternative, and BF-100 as extreme evidence for alternative.
+
+### H7 BF check
+```{r}
+#H7: DV is Behavioral Empathy: h7_model<-lm(empathytask~PraiseControl,data=data3White_BH) 
+# Run the Bayesian linear model: remove NAs in predictors 
+bf_result <- lmBF(empathytask ~ PraiseControl, data = subset(data3White_BH,treatment!="placebo"), 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+
+### H8 BF check
+```{r}
+#H8: DV is Self Reported Empathy  h8_model<-lm(post_empathyselfindex~PraiseControl,data=data3White)
+# Run the Bayesian linear model: remove NAs in predictors 
+bf_result <- lmBF(post_empathyselfindex ~ PraiseControl, data = subset(data3White,treatment!="placebo"), 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+
+### H9 BF check
+```{r}
+#H9: Political Inclusion h9_model<-lm(behavioralindex~PraiseControl,data=data3White)
+# Run the Bayesian linear model: remove NAs in predictors 
+bf_result <- lmBF(behavioralindex ~ PraiseControl, data = subset(data3White,treatment!="placebo"), 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+
+### H10 BF check
+ 
+```{r}
+#H10: DV is Attitudinal Inclusion h10_model<-lm(post_attitudinalindex~PraiseControl,data=data3White)
+# Run the Bayesian linear model:  
+bf_result <- lmBF(post_attitudinalindex ~ PraiseControl, data = data3White, 
+                    whichModels = "null")
+
+# Extract the Bayes Factor in favor of the alternative over the null
+bf_value <- extractBF(bf_result)$bf
+
+# Print the Bayes Factor
+cat("Bayes Factor (BF) = ", bf_value, "\n")
+
+# Interpretation based on Kass & Raftery (1995)
+if (bf_value < 1) {
+  cat("Evidence for null hypothesis\n")
+} else if (bf_value < 3) {
+  cat("Anecdotal evidence for alternative hypothesis\n")
+} else if (bf_value < 10) {
+  cat("Moderate evidence for alternative hypothesis\n")
+} else if (bf_value < 30) {
+  cat("Strong evidence for alternative hypothesis\n")
+} else if (bf_value < 100) {
+  cat("Very strong evidence for alternative hypothesis\n")
+} else {
+  cat("Extreme evidence for alternative hypothesis\n")
+}
+```
+ 
+We find evidence for null hypotheses H7, H8, H9 and H10.
+
+## Figure 8
+
+```{r}
+# Define consistent colors (hex) — viridis-like palette adjusted:
+cols <- viridis(n = 3,option="D") 
+
+models <- list(h7_model, h8_model, h9_model, h10_model)
+
+# Extract PraiseControl coef and 95% CI for each model
+coef_df <- lapply(seq_along(models), function(i) {
+  m <- models[[i]]
+  td <- broom::tidy(m, conf.int = TRUE, conf.level = 0.95)
+  row <- td %>% filter(term == "PraiseControl")
+  if (nrow(row) == 0) stop(paste0("Coefficient 'PraiseControl' not found in model ", i+6))
+  data.frame(
+    H = paste0("H", i + 6),                      # H7..H10
+    estimate = row$estimate,
+    conf.low = row$conf.low,
+    conf.high = row$conf.high,
+    stringsAsFactors = FALSE
+  )
+}) %>% bind_rows()
+
+# Descriptive labels
+label_map <- c(
+  H7  = "H7: Behavioral Empathy",
+  H8  = "H8: Self Reported Empathy",
+  H9  = "H9: Behavioral Inclusion",
+  H10 = "H10: Attitudinal Inclusion"
+)
+
+coef_df <- coef_df %>%
+  mutate(H_label = label_map[H])
+
+# Order so H7 at top, H10 bottom
+coef_df$H_label <- factor(coef_df$H_label, levels = rev(unname(label_map)))
+
+# All points same color "red"
+coef_df <- coef_df %>% mutate(group = "greengroup")
+
+# Plot (no numeric point estimate labels)
+p <- ggplot(coef_df, aes(x = estimate, y = H_label, color = group)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray60") +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.25, size = 0.9) +
+  geom_point(size = 3.5) +
+  scale_color_manual(values = c("greengroup" = "#21908CFF"),
+                     labels = c("greengroup" = "")) +
+  labs(x = "Average Treatment Effect", y = NULL,
+       color = NULL, title = "") +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none",
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank())
+
+# Expand x-axis so error bars are not cut off
+x_range <- range(coef_df$conf.low, coef_df$conf.high, coef_df$estimate)
+xpad <- diff(x_range) * 0.15
+p <- p + scale_x_continuous(limits = c(x_range[1] - xpad, x_range[2] + xpad), labels = comma)
+
+print(p)
+
+ggsave(p,file=here::here("NHB figures","Fig8.pdf"),width=6,height=5)
+```
+
+
+## Appendix Table Main Results H7-10
+
+```{r} 
+ 
+models <- list(h7_model, h8_model, h9_model, h10_model)
+
+# presult1 must be a data.frame with BH_adjusted_p in the same order as models
+# Prepare BH-adjusted p-values from presult2 (must be same order as models)
+adjp <- presult2$BH_adjusted_p
+ 
+# Add a row with the BH-adjusted p-values (formatted)
+add_line <- list(c("BH-adjusted p-value", formatC(adjp, format = "f", digits = 3)))
+col.labels <- paste("H",7:10,sep="")
+
+
+# Create the stargazer table and write to file
+stargazer(
+    models,
+    type = "latex",
+    out = "regression_table2.tex",
+    title = "H7-H10 models",
+    column.labels = col.labels,
+    dep.var.labels.include = FALSE,
+    covariate.labels = c("Intercept", "Co-Partisan PeerPraise"),
+    keep.stat = c("n", "rsq"),
+    add.lines = add_line,
+    digits = 2,
+    single.row = TRUE,
+    no.space = TRUE 
+)
+#Table E.21 in Appendix
+```
+
+
+
+## Robustness
+ 
+### Did respondents engage in empathy more with white faces?
+
+```{r}
+#In H7 we tested if, among White respondents seeing BH image, co-partisan peer praise could influence willingness to engage in behavioral empathy (empathy task). 
+checkdata<-data3White
+checkdata$Image_race<-factor(checkdata$Image_race,levels=c("B","L","W"))
+
+#Broken down by W or BL faces
+check1<-lm(empathytask~PraiseControl*Image_raceBH,data=checkdata)
+summary(check1)
+
+#Broken down by B, L, W faces
+check1<-lm(empathytask~PraiseControl*Image_race,data=checkdata)
+summary(check1)
+
+```
+
+Respondents didn't engage differently with images of different race/ethnicities. 
+
+### Other HTEs
+
+#### Respondent Gender
+
+Are there heterogeneous treatment effects by gender?
+
+```{r}
+#H7: DV is Behavioral Empathy
+check2_1<-lm(empathytask~PraiseControl*sex,data=data3White_BH)
+summary(check2_1)
+#H8: DV is Self Reported Empathy 
+check2_2<-lm(post_empathyselfindex~PraiseControl*sex,data=data3White)
+summary(check2_2)
+#H9: Behavioral Inclusion
+check2_3<-lm(behavioralindex~PraiseControl*sex,data=data3White)
+summary(check2_3)
+#H10: DV is Attitudinal Inclusion
+check2_4<-lm(post_attitudinalindex~PraiseControl*sex,data=data3White)
+summary(check2_4) 
+```
+
+No evidence of HTEs by gender.
+
+#### Respondent Age 
+Are there heterogeneous treatment effects by age?
+
+```{r}
+#H7: DV is Behavioral Empathy
+check3_1<-lm(empathytask~PraiseControl*age,data=data3White_BH)
+summary(check3_1)
+#H8: DV is Self Reported Empathy 
+check3_2<-lm(post_empathyselfindex~PraiseControl*age,data=data3White)
+summary(check3_2)
+#H9: Behavioral Inclusion
+check3_3<-lm(behavioralindex~PraiseControl*age,data=data3White)
+summary(check3_3)
+#H10: DV is Attitudinal Inclusion
+check3_4<-lm(post_attitudinalindex~PraiseControl*age,data=data3White)
+summary(check3_3) 
+```
+
+No evidence to support age HTEs.
+
+#### Respondent Education 
+Are there heterogeneous treatment effects by education?
+
+```{r}
+#H7: DV is Behavioral Empathy
+check4_1<-lm(empathytask~PraiseControl*education_level,data=data3White_BH)
+summary(check4_1)
+#H8: DV is Self Reported Empathy 
+check4_2<-lm(post_empathyselfindex~PraiseControl*education_level,data=data3White)
+summary(check4_2)
+#H9: Behavioral Inclusion
+check4_3<-lm(behavioralindex~PraiseControl*education_level,data=data3White)
+summary(check4_3)
+#H10: DV is Attitudinal Inclusion
+check4_4<-lm(post_attitudinalindex~PraiseControl*education_level,data=data3White)
+summary(check4_4)  
+#PraiseControl                        0.161310   0.075137   2.147   0.0319 *  
+#PraiseControl:education_levelMedium -0.164426   0.075440  -2.180   0.0294 *  
+#PraiseControl:education_levelHigh   -0.172417   0.075697  -2.278   0.0228 *  
+confint(check4_4, level = 0.95) # TreatxLow=0.01398108  0.30863797; TreatxMid=-0.31234742 -0.01650464; TreatxHigh=-0.32084225 -0.02399112
+```
+
+Exploratory analysis suggests education moderates co-partisan peer praise effect on attitudinal inclusion.
+
