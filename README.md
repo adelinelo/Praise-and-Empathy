@@ -23,4 +23,4 @@ Includes figures output from analyses.
 
 ## Papers folder
 
-Includes manuscript and accompanying appendix.
+Includes current manuscript and accompanying appendix.
