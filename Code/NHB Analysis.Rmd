@@ -81,7 +81,7 @@ rm(list=ls())
 
 pacman::p_load(here,Hmisc,dplyr,lubridate,gridExtra,grid,stargazer,hrbrthemes,quanteda,readtext,tidyverse,knitr,papeR,tidyr,kableExtra,ggpubr,printr,tab,lfe,sjPlot,clusterSEs,BBmisc,miceadds,mediation,estimatr,sensemakr,SentimentAnalysis,ggplot2,ggridges,viridis,BayesFactor,mediation,broom,scales)
 
-source("R_fns.R")
+source(here::here("Code","R_fns.R"))
 ```
 
 # Study 1
@@ -91,87 +91,9 @@ Peer Praise effects on Racial/Ethnic Outgroup Inclusion
 ## Clean preprocess data
 
 ```{r}
-#Clean data (INTERNAL PORTION)
-#setwd("/Users/lob623/Dropbox/Praise-and-Empathy/Analysis")
 
-data1 <- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","Study1Wave1_August18.csv"),header=T, na.strings=c("", " ", "NA"))
-data2 <- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","Study1Wave2_August26.csv"),header=T, na.strings=c("", " ", "NA"))
-key<- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","matching_key.csv"),header=T, na.strings=c("", " ", "NA"))
-key$keyID <- 1:nrow(key) #create unique identifier that is not MTurk_ID so datasets can be deidentified
-
-data1<-data1[-(1:2),] # 
-data2<-data2[-(1:2),] #
-
-# key has full set of clean wave 2 respondents matched to wave 1 respondents:
-data2 <- data2[data2$ResponseId %in% key$ResponseId_wave2, , drop = FALSE] 
-
-data2$keyID <- key$keyID[match(data2$ResponseId, key$ResponseId_wave2)]
-data1$keyID <- key$keyID[match(data1$ResponseId, key$ResponseId_wave1)]
-
-## variable for if respondent is captured in wave 2 
-data1$wave2_present <- as.integer(data1$keyID %in% data2$keyID) 
-
-## variable for if respondent (in wave 2) is from wave1 -- sanity check--checked
-#data2$wave1_present <- as.integer(data2$keyID %in% data1$keyID) 
-
-
-#Screen out nonattentive and non-consenting
-#Consented
-data1<-subset(data1,consent=="I agree to participate")
-data2<-subset(data2,consent=="I agree to participate")
-
-#Pass Attention Checks
-data1$attentionMC<-ifelse(data1$attention_1=="Classified,None of the above",1,0)
-data1$attentionG<-ifelse((data1$attention_2_3=="Agree"|data1$attention_2_3=="Agree strongly")&data1$attention_2_5=="Neither agree nor disagree",1,0)
-data1$attentive<-rowSums(cbind(data1$attentionMC,data1$attentionG),na.rm=TRUE)
-data1<-subset(data1,attentive==2) #attentive
-
-
-#sum(is.na(data1$MTurk_ID))
-
-
-#data1/data2 error: a few MTURK_IDs took the survey twice because of bug ----take first taken survey as only observation
-data1$StartDate <- ymd_hms(data1$StartDate)
-
-# Keep only the first survey per MTurk_ID
-
-#save separate -- remove duplicates but keep incomplete responses (to account for attrition later)
-data1 <- data1 %>%
-  group_by(MTurk_ID) %>%
-  slice_min(StartDate) %>%
-  ungroup()
-
-data2$StartDate <- ymd_hms(data2$StartDate)
-
-data2 <- data2 %>%
-  group_by(MTurk_ID) %>%
-  slice_min(StartDate) %>%
-  ungroup()
-
-## We're going to conduct H1-H4 on data1, then H5-H6 on data2 joined with info from data1 for treatment, pre-treatment covs;
-#Subset data1 variables we want to merge into data2
-data1_sub<-data1 %>% dplyr::select(keyID,race,age,education,citizenship,income
-                                   ,party_id,religion,social_dis1,therm1_1,therm1_2
-                                   ,empathyself1,empathyself2,empathyself3
-                                   ,ethnocentrism_1,ethnocentrism_2,ethnocentrism_3,ethnocentrism_4
-                                   ,ethnocentrism_5,ethnocentrism_6,ethnocentrism_7,ethnocentrism_8
-                                   ,peers_1,peers_2,peers_3
-                                   ,Happy_1,Happy_2,Happy_3,anxiety_1,anxiety_2,anxiety_3,anger_1,anger_2,anger_3
-                                   ,treatment)
-
-data2 <- data2 %>%
-  left_join(data1_sub, by = "keyID")
-
-#remove all MTurk ID traces --- can't share this publicly
-data1$MTurk_ID <- NULL
-data2$MTurk_ID <- NULL
-
-## Save -- start with below in files
-saveRDS(data1,here::here("NHB data/Study1Wave1.rds"))
-saveRDS(data2,here::here("NHB data/Study1Wave2.rds"))
-
-data1<-readRDS(here::here("NHB data/Study1Wave1.rds"))
-data2<-readRDS(here::here("NHB data/Study1Wave2.rds"))
+data1<-readRDS(here::here("Data/Survey Data/Main Study 1/Study1Wave1.rds"))
+data2<-readRDS(here::here("Data/Survey Data/Main Study 1/Study1Wave2.rds"))
 
 ####################################################################### 
 ###### CLEAN DATA -- PUBLIC DEIDENTIFIED VERSION STARTS HERE ##########
@@ -447,10 +369,10 @@ data1White<-subset(data1,raceWhite==1)
 data2White<-subset(data2,raceWhite==1)
 
 #Save Data
-saveRDS(data1,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w1full.rds")) #study 1 wave 1 full
-saveRDS(data1White,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w1.rds")) #study 1 wave 1 white
-saveRDS(data2,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w2full.rds")) #study 1 wave 2 full
-saveRDS(data2White,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study1w2.rds")) #study 1 wave 2 white
+saveRDS(data1,file=here::here("Data","Survey Data","Main Study 1","study1w1full.rds")) #study 1 wave 1 full
+saveRDS(data1White,file=here::here("Data","Survey Data","Main Study 1","study1w1.rds")) #study 1 wave 1 white
+saveRDS(data2,file=here::here("Data","Survey Data","Main Study 1","study1w2full.rds")) #study 1 wave 2 full
+saveRDS(data2White,file=here::here("Data","Survey Data","Main Study 1","study1w2.rds")) #study 1 wave 2 white
 
 
 #Subset to White who see BH image
@@ -944,7 +866,7 @@ plot(mediation_norms, labels=c("ACME\n(Norms)",
                             "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
 
 # save plot to PDF: Appendix Figure D.42
-pdf(here::here("NHB figures/si_fig42_med_norms.pdf"), width = 7, height = 5) 
+pdf(here::here("Figures/si_fig42_med_norms.pdf"), width = 7, height = 5) 
 par(mar = c(5, 6.5, 3.2, 0.1))
 plot(mediation_norms, labels = c("ACME\n(Norms)",
                                  "Direct Effect \n(Behavioral Inclusion Index)",
@@ -976,7 +898,7 @@ par(mar=c(5,6.5,3.2,01))
 plot(mediation_happy, labels=c("ACME\n(Happiness)",
                             "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
 # save plot to PDF: Appendix Figure D.43
-pdf(here::here("NHB figures/si_fig43_med_happy.pdf"), width = 7, height = 5) 
+pdf(here::here("Figures/si_fig43_med_happy.pdf"), width = 7, height = 5) 
 par(mar=c(5,6.5,3.2,01))
 plot(mediation_happy, labels=c("ACME\n(Happiness)",
                             "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
@@ -993,7 +915,7 @@ dev.off()
 
 We do not find evidence for norms or elicited happiness serving as mediators for the (+) peer praise treatment effect on behavioral inclusion.
 
-## Figure 7
+## Figure 7 H1-H6
 
 ```{r}
 # Define consistent colors (hex) — viridis-like palette adjusted:
@@ -1075,7 +997,7 @@ p <- p + scale_x_continuous(limits = c(x_range[1] - xpad, x_range[2] + xpad), la
 # Print plot
 print(p)
 
-ggsave(p,file=here::here("NHB figures","Fig7.pdf"),width=6,height=5)
+ggsave(p,file=here::here("Figures","Fig7.pdf"),width=6,height=5)
 ```
 
 Note H5 and H6 plots the Manski bounds on ATE.
@@ -1178,7 +1100,7 @@ par(mar=c(5,6.5,3.2,01))
 plot(mediation_anxiety, labels=c("ACME\n(Anxiety)",
                             "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
 # save plot to PDF: Appendix Figure D.44
-pdf(here::here("NHB figures/si_fig44_med_anxiety.pdf"), width = 7, height = 5) 
+pdf(here::here("Figures/si_fig44_med_anxiety.pdf"), width = 7, height = 5) 
 par(mar=c(5,6.5,3.2,01))
 plot(mediation_anxiety, labels=c("ACME\n(Anxiety)",
                             "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
@@ -1210,7 +1132,7 @@ par(mar=c(5,6.5,3.2,01))
 plot(mediation_anger, labels=c("ACME\n(Anger)",
                             "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
 # save plot to PDF: Appendix Figure D.45
-pdf(here::here("NHB figures/si_fig45_med_anger.pdf"), width = 7, height = 5) 
+pdf(here::here("Figures/si_fig45_med_anger.pdf"), width = 7, height = 5) 
 par(mar=c(5,6.5,3.2,01))
 plot(mediation_anger, labels=c("ACME\n(Anger)",
                             "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
@@ -1346,40 +1268,7 @@ Co-Partisan Peer Praise effects on Racial/Ethnic Outgroup Inclusion
 ## Clean preprocess data
 
 ```{r}
-#Clean data
-data3 <- read.csv(here::here("../Data/Survey Data/NHB MTurk Surveys July 2025","Study2_August28.csv"),header=T, na.strings=c("", " ", "NA"))
-data3<-data3[-(1:2),] 
-
-#Screen out nonattentive and non-consenting
-#Consented 
-data3<-subset(data3,consent=="I agree to participate")
-
-#Pass Attention Checks
-data3$attentionMC<-ifelse(data3$attention_1=="Classified,None of the above",1,0)
-data3$attentionG<-ifelse((data3$attention_2_3=="Agree"|data3$attention_2_3=="Agree strongly")&data3$attention_2_5=="Neither agree nor disagree",1,0)
-data3$attentive<-rowSums(cbind(data3$attentionMC,data3$attentionG),na.rm=TRUE)
-data3<-subset(data3,attentive==2) #attentive
-
-
-#data3 error: a few MTurk_IDs took survey twice because of bug --- take first survey taken as only observation for these
-# Convert StartDate to POSIXct date-time
-data3$StartDate <- ymd_hms(data3$StartDate)
-# Keep only the first survey per MTurk_ID
-
-data3 <- data3 %>%
-  group_by(MTurk_ID) %>%
-  slice_min(StartDate) %>%
-  ungroup()
-
-#remove all MTurk ID traces --- can't share this publicly
-data3$MTurk_ID <- NULL
-
-#everyone who is Independent and receives "treatment" is actually receiving control -- recode
-data3$treatment<-ifelse(data3$party_id=="Independent","control",data3$treatment)
-
-## Save for public facing rds
-saveRDS(data3,file=here::here("NHB data/Study2.rds")) 
-data3<-readRDS(here::here("NHB data/Study2.rds")) 
+data3<-readRDS(here::here("Data/Survey Data/Main Study 2","Study2.rds")) 
 
 ####################################################################### 
 ###### CLEAN DATA -- PUBLIC DEIDENTIFIED VERSION STARTS HERE ##########
@@ -1558,8 +1447,8 @@ data3White<-subset(data3,raceWhite==1&(party=="Democrat"|party=="Republican"))
 data3White$party <- relevel(data3White$party, ref = "Republican")
 data3White$party <- droplevels(data3White$party)
 #Save Data
-saveRDS(data3,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study2full.rds")) #study 2 full
-saveRDS(data3White,file=here::here("../Data","Survey Data","NHB MTurk Surveys July 2025","study2w.rds")) #study 2 white 
+saveRDS(data3,file=here::here("Data","Survey Data","Main Study 2","study2full.rds")) #study 2 full
+saveRDS(data3White,file=here::here("Data","Survey Data","Main Study 2","study2w.rds")) #study 2 white 
 
 
 #Subset to White who see BH image
@@ -1916,7 +1805,7 @@ p <- p + scale_x_continuous(limits = c(x_range[1] - xpad, x_range[2] + xpad), la
 
 print(p)
 
-ggsave(p,file=here::here("NHB figures","Fig8.pdf"),width=6,height=5)
+ggsave(p,file=here::here("Figures","Fig8.pdf"),width=6,height=5)
 ```
 
 
