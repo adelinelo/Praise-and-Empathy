@@ -2,6 +2,7 @@
 
 Replication files and materials for **"Can praise from peers promote empathy and inclusive behavior towards racial or ethnic outgroups?"** by Adeline Lo, Jonathan Renshon & Lotem Bassan-Nygate. Stage 1 AIP figshare: https://springernature.figshare.com/articles/journal_contribution/Can_praise_from_peers_promote_empathy_and_political_inclusion_towards_racial_or_ethnic_outgroups_Registered_Report_Stage_1_Protocol_/28715198?file=53375999
 
+To run analyses make sure you're in the Rproj `Analysis.Rproj` --- file directories are set through the Rproj perspective.
 ## Files
 
 ### Data folder
