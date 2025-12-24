@@ -1,6 +1,6 @@
 ---
 title: "Across pilot study summarizations"
-date: 'This version: March 2025'
+date: 'This version: December 2025'
 author: "Adeline Lo"
 output: 
   html_document: 
@@ -168,14 +168,14 @@ sumtable<-data.frame(Study=1:5
            ,Treatment=c("-","-","Peer praise","Peer praise","Peer praise mediated by happiness")
            ,N=c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),(nrow(data5)+nrow(data6))))
 
-studies<-data.frame(Study=c("Study 1","Study 2", "Study 3", "Study 4","Study 5A","Study 5B", "Total")
-                    ,Goal=c("Costliness of empathy","Eliciting peer praise","Peer praise on empathy","Happiness as mediator","Mediation analysis","Mediation analysis","-")
-                    ,Total_N=c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),nrow(data5),nrow(data6),sum(c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),nrow(data5),nrow(data6))))
-                    ,Total_T=c(3,"-",15,1,20,3,"-")
+studies<-data.frame(Study=c("Study 1","Study 2", "Study 3", "Study 4","Study 5A","Study 5B", "Study 6", "Study 7", "Total")
+                    ,Goal=c("Costliness of empathy","Eliciting peer praise","Peer praise on empathy","Happiness as mediator","Mediation analysis","Mediation analysis","Empathy towards racial outgroups","Co-partisan praise","-")
+                    ,Total_N=c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),nrow(data5),nrow(data6),214,308,sum(c(nrow(data1),nrow(data2),nrow(data3),nrow(data4),nrow(data5),nrow(data6),214,308)))
+                    ,Total_T=c(3,"-",15,1,20,3,1,1,"-")
                     ,Total_obs=c(nrow(long_data1),nrow(data2) #1,2
                                  ,(1559+1561+1560),nrow(data4) #3,4
-                                 ,(3238+3242),(866+865)
-                                 ,sum(c(nrow(long_data1),nrow(data2),(1559+1561+1560),nrow(data4),(3238+3242),(866+865))))
+                                 ,(3238+3242),(866+865),214,308
+                                 ,sum(c(nrow(long_data1),nrow(data2),(1559+1561+1560),nrow(data4),(3238+3242),(866+865),214,308)))
 )
 
 #LaTeX table
@@ -454,18 +454,71 @@ sent_describe_df<-convert(sent_describe_dfm, to = "data.frame")
 sent_describe_df$thermometer<-data2_text_describe$DESCRIBE_4#[match(sent_describe_df$document,data_text_describe$doc_id)]
 
 #How are text sentiments and the thermometer related?
-# linear trend + confidence interval
-tmp_col<-viridis(3,begin=0,end=1,direction=1,option="D", alpha=0.65)
-p1<-ggplot(sent_feel_df, aes(x=positive, y=thermometer)) + ylim(0,10) +
-  #geom_jitter(alpha=0.5,width = 0.2, height = 0.2) +
-  geom_point(position = position_jitter(seed = 12345),alpha=0.5,width = 0.2, height = 0.2) +
-  geom_smooth(method=lm , color=cbPalette[1], fill=tmp_col[3], se=TRUE) +
+# Fit model explicitly (so we can report the test + exact p-value)
+fit <- lm(thermometer ~ positive, data = sent_feel_df)
+s <- summary(fit)
+# Exact p-value for the slope (t-test of H0: beta_positive = 0)
+p_slope <- s$coefficients["positive", "Pr(>|t|)"]
+beta    <- s$coefficients["positive", "Estimate"]
+se_beta <- s$coefficients["positive", "Std. Error"]
+df_res  <- s$df[2]
+# Format EXACT p-value (not thresholds)
+p_txt <- format.pval(p_slope, digits = 3, eps = .Machine$double.eps)
+# Annotation text (specifies test + exact p-value)
+stat_lab <- sprintf("OLS: N=115, slope = %.3f, p = %s", beta,  p_txt)
+# Plot
+tmp_col <- viridis::viridis(3, begin = 0, end = 1, direction = 1, option = "D", alpha = 0.65)
+p1 <- ggplot(sent_feel_df, aes(x = positive, y = thermometer)) +
+  coord_cartesian(ylim = c(0, 10)) +
+  geom_point(
+    position = position_jitter(width = 0.2, height = 0.2, seed = 12345),
+    alpha = 0.5
+  ) +
+  geom_smooth(method = "lm", color = cbPalette[1], fill = tmp_col[3], se = TRUE) +
+  annotate(
+    "label",
+    x = -Inf, y = Inf,
+    hjust = -0.05, vjust = 1.1,
+    label = stat_lab,
+    size = 3
+  ) +
   theme_bw()
+
+p1
 
 p2<-ggplot(sent_feel_df, aes(x=negative, y=thermometer)) + ylim(0,10) +
   #geom_jitter(alpha=0.5,width = 0.2, height = 0.2) +
   geom_point(position = position_jitter(seed = 12345),alpha=0.5,width = 0.2, height = 0.2) +
   geom_smooth(method=lm , color=cbPalette[1], fill=tmp_col[3], se=TRUE) +
+  theme_bw()
+
+
+# Fit model explicitly
+fit2 <- lm(thermometer ~ negative, data = sent_feel_df)
+
+# Exact p-value for slope (negative)
+p2_slope_p <- summary(fit2)$coefficients["negative", "Pr(>|t|)"]
+p2_slope_est <- coef(fit2)["negative"]
+
+# Format for display (exact, but readable)
+p2_p_txt <- ifelse(p2_slope_p < 1e-3,
+                   format(p2_slope_p, scientific = TRUE, digits = 2),
+                   formatC(p2_slope_p, format = "f", digits = 4))
+p2_b_txt <- formatC(p2_slope_est, format = "f", digits = 3)
+
+# Make plot with annotation
+p2 <- ggplot(sent_feel_df, aes(x = negative, y = thermometer)) +
+  ylim(0, 10) +
+  geom_point(position = position_jitter(seed = 12345),
+             alpha = 0.5, width = 0.2, height = 0.2) +
+  geom_smooth(method = lm, color = cbPalette[1], fill = tmp_col[3], se = TRUE) +
+  annotate(
+    "text",
+    x = -Inf, y = Inf, hjust = -0.05, vjust = 1.15,
+    label = paste0("OLS: N=115, ",
+                   "slope = ", p2_b_txt, ", p = ", p2_p_txt),
+    size = 3.5 #
+  ) +
   theme_bw()
 
 pdf(file=here::here("Figures","linear_sentiment_feel_thermometer.pdf"),width=8,height=8)
@@ -477,17 +530,61 @@ dev.off()
 Create SI Figure B.8
 ```{r}
 #How are text sentiments and the thermometer related?
-# linear trend + confidence interval
-tmp_col<-viridis(3,begin=0,end=1,direction=1,option="D", alpha=0.65)
-p1<-ggplot(sent_describe_df, aes(x=positive, y=thermometer)) + ylim(0,10) +
-  geom_point(position = position_jitter(seed = 12345),alpha=0.5,width = 0.2, height = 0.2) +
-  geom_smooth(method=lm , color=cbPalette[1], fill=tmp_col[2], se=TRUE) +
+# Fit model explicitly (so we can report the test + exact p-value)
+fit <- lm(thermometer ~ positive, data = sent_describe_df)
+s <- summary(fit)
+# Exact p-value for the slope (t-test of H0: beta_positive = 0)
+p_slope <- s$coefficients["positive", "Pr(>|t|)"]
+beta    <- s$coefficients["positive", "Estimate"]
+# Format EXACT p-value (not thresholds)
+p_txt <- format.pval(p_slope, digits = 3, eps = .Machine$double.eps)
+# Annotation text (specifies test + exact p-value)
+stat_lab <- sprintf("OLS: N=115, slope = %.3f, p = %s", beta,  p_txt)
+# Plot
+tmp_col <- viridis::viridis(3, begin = 0, end = 1, direction = 1, option = "D", alpha = 0.65)
+p1 <- ggplot(sent_describe_df, aes(x = positive, y = thermometer)) +
+  coord_cartesian(ylim = c(0, 10)) +
+  geom_point(
+    position = position_jitter(width = 0.2, height = 0.2, seed = 12345),
+    alpha = 0.5
+  ) +
+  geom_smooth(method = "lm", color = cbPalette[1], fill = tmp_col[2], se = TRUE) +
+  annotate(
+    "label",
+    x = -Inf, y = Inf,
+    hjust = -0.05, vjust = 1.1,
+    label = stat_lab,
+    size = 3
+  ) +
   theme_bw()
 
-p2<-ggplot(sent_describe_df, aes(x=negative, y=thermometer)) + ylim(0,10) +
-  geom_point(position = position_jitter(seed = 12345),alpha=0.5,width = 0.2, height = 0.2) +
-  geom_smooth(method=lm , color=cbPalette[1], fill=tmp_col[2], se=TRUE) +
+p1
+
+
+#negative sentiment
+# Fit model explicitly (so we can report the test + exact p-value)
+fit <- lm(thermometer ~ negative, data = sent_describe_df)
+s <- summary(fit)
+# Exact p-value for the slope (t-test of H0: beta_positive = 0)
+p_slope <- s$coefficients["negative", "Pr(>|t|)"]
+beta    <- s$coefficients["negative", "Estimate"]
+# Format EXACT p-value (not thresholds)
+p_txt <- format.pval(p_slope, digits = 3, eps = .Machine$double.eps)
+# Annotation text (specifies test + exact p-value)
+stat_lab <- sprintf("OLS: N=115, slope = %.3f, p = %s", beta,  p_txt)
+# Plot
+tmp_col <- viridis::viridis(3, begin = 0, end = 1, direction = 1, option = "D", alpha = 0.65)
+p2 <- ggplot(sent_describe_df, aes(x = negative, y = thermometer)) +
+  coord_cartesian(ylim = c(0, 10)) +
+  geom_point(position = position_jitter(width = 0.2, height = 0.2, seed = 12345), alpha = 0.5) +
+  geom_smooth(method = "lm", color = cbPalette[1], fill = tmp_col[2], se = TRUE) +
+  annotate("label",
+    x = -Inf, y = Inf,
+    hjust = -0.05, vjust = 1.1,
+    label = stat_lab,
+    size = 3) +
   theme_bw()
+
 
 pdf(file=here::here("Figures","linear_sentiment_describe_thermometer.pdf"),width=8,height=8)
 grid.arrange(p1,p2,nrow=1)
@@ -501,13 +598,45 @@ Create SI Figure B.9
 ```{r}
 tmp_col<-viridis(3,begin=0.3,end=1,direction=1,option="D", alpha=0.65)
 plotdata<-data.frame(feel=c(data2_text_feel$FEEL_4),describe=c(data2_text_describe$DESCRIBE_4))
-p <- ggplot(plotdata, aes(x=x) ) +
-  geom_histogram( aes(x = feel, y = ..density..), fill="gold2", binwidth = 0.5,alpha=0.7) +
-  geom_label( aes(x=4.5, y=0.35, label="Average Feel: 7.92"), color="gold2") + ylim(-0.6,0.6)+
-  geom_histogram( aes(x = describe, y = -..density..), fill= "darkcyan", binwidth = 0.5, alpha=0.7) +
-  geom_label( aes(x=4.5, y=-0.35, label="Average Describe: 7.21"), color="darkcyan") +
+n_feel     <- sum(!is.na(plotdata$feel))
+n_describe <- sum(!is.na(plotdata$describe))
+test_res <- t.test(plotdata$feel, plotdata$describe, paired = FALSE)
+p_exact <- test_res$p.value
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+mean_feel     <- mean(plotdata$feel, na.rm = TRUE)
+mean_describe <- mean(plotdata$describe, na.rm = TRUE)
+
+p <- ggplot(plotdata) +
+  # Feel (top)
+  geom_histogram(aes(x = feel, y = after_stat(density)),
+                 fill = "gold2", binwidth = 0.5, alpha = 0.7) +
+
+  # CHANGED (Nature): include n in the figure label, and keep “Average …”
+  geom_label(aes(x = 4.5, y = 0.35,
+                 label = paste0("Average Feel: ", sprintf("%.2f", mean_feel),
+                                "\n(n = ", n_feel, " samples)")),
+             color = "gold2") +
+
+  # Describe (bottom, mirrored)
+  geom_histogram(aes(x = describe, y = -after_stat(density)),
+                 fill = "darkcyan", binwidth = 0.5, alpha = 0.7) +
+
+  # CHANGED (Nature): include n in the figure label
+  geom_label(aes(x = 4.5, y = -0.35,
+                 label = paste0("Average Describe: ", sprintf("%.2f", mean_describe),
+                                "\n(n = ", n_describe, " samples)")),
+             color = "darkcyan") +
+
+  # CHANGED (Nature): put test + exact p-value ON the figure (or you could put in caption)
+  annotate("text", x = 4.5, y = 0.52,
+           label = paste0("Two-sample t-test (two-sided): p = ", p_txt),
+           size = 3.6) +
+
   theme_bw() +
-  xlab("thermometer")
+  xlab("thermometer") +
+  ylim(-0.6, 0.6)
 
 pdf(file=here::here("Figures","thermometer_density.pdf"),width=8,height=6)
 p
@@ -1043,6 +1172,22 @@ praisepride1 <- lm(pride ~ PraiseEmpathy, data = data4)
 summary(praisepride1)
 confint(praisepride1)
 
+
+df <- data4 %>%
+  filter(!is.na(PraiseEmpathy), !is.na(pride)) %>%      # <-- CHANGED
+  mutate(name = ifelse(PraiseEmpathy == 1,
+                       "Peer praise empathy",
+                       ifelse(PraiseEmpathy == 0, "Control", NA_character_)))
+
+tt <- t.test(pride ~ PraiseEmpathy, data = df) 
+p_exact <- tt$p.value
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+diff_means <- diff(tt$estimate)
+diff_txt <- paste0("N = ", sprintf("%.0f", nrow(df)),", Difference in means: ",  sprintf("%.3f", diff_means),
+                   " (two-sample t-test p = ", p_txt, ")")
+
 data4 %>%
   ggplot( aes(x=pride, fill=as.factor(PraiseEmpathy))) +
     geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
@@ -1054,31 +1199,47 @@ data4 %>%
 sample_size = data4 %>% filter(!is.na(PraiseEmpathy))%>% group_by(PraiseEmpathy) %>% dplyr::summarize(num=n())
 data4$name<-ifelse(data4$PraiseEmpathy==1,"Peer praise empathy",ifelse(data4$PraiseEmpathy==0,"Control",""))
 # Plot
-praiseprideplot<-data4 %>%
-  filter(!is.na(PraiseEmpathy))%>%
-  left_join(sample_size) %>%
-  #mutate(myaxis = paste0(name, "\n", "n=", num)) %>%
-  mutate(myaxis = name) %>%
-  ggplot( aes(x=myaxis, y=happy, fill=name)) +
-    geom_violin(width=1) +
-    geom_boxplot(width=0.1, color="grey20", alpha=0.2) +
-    scale_fill_viridis(discrete = TRUE,alpha=0.7,begin=0.25,end=1,option="D") +
-    theme_bw() + ylab("Pride") + xlab("") + ggtitle("Pride distribution by treatment arm") + 
-    theme(
-      legend.position="none",
-      axis.title.y = element_text(size=12),
-      axis.text.y = element_text(size=12),
-      axis.text.x = element_text(size=12),
-      plot.title = element_text(size=13,face="bold")
-    ) + coord_flip()  + geom_text(x=2.535,y=3,label="Difference in means: 0.487 (p=0.002)",color="gray20",size=4.5)
-praiseprideplot 
-#praise-pride_dist.pdf 7x7
+praiseprideplot <- ggplot(df, aes(x = name, y = pride, fill = name)) +
+  geom_violin(width = 1, trim = FALSE) +
+  geom_boxplot(width = 0.1, color = "grey20",
+               alpha = 0.2, outlier.shape = NA) +
+  # CHANGED (Nature: overlay individual data points)
+  geom_point(
+    position = position_jitter(width = 0.12, height = 0, seed = 12345),
+    alpha = 0.55, size = 1.6, color = "grey20"
+  ) +
+  scale_fill_viridis(discrete = TRUE, alpha = 0.7,
+                     begin = 0.25, end = 1, option = "D") +
+  theme_bw() +
+  ylab("Pride") + xlab("") +
+  ggtitle("Pride distribution by treatment arm") +
+  theme(
+    legend.position = "none",
+    axis.title.y = element_text(size = 12),
+    axis.text.y  = element_text(size = 12),
+    axis.text.x  = element_text(size = 12),
+    plot.title   = element_text(size = 13, face = "bold")
+  ) +
+  coord_flip() +
+  # CHANGED (Nature: test + exact p-value on figure)
+  annotate(
+    "text",
+    x = 1.5, y = 2,
+    label = diff_txt,
+    hjust = 0, vjust = 1,
+    color = "gray20", size = 4.5
+  )
+
+praiseprideplot
 #extract data from ggplot object
 plot_data <- ggplot_build(praiseprideplot)$data
 #boxplot data
 boxplot_data <- plot_data[[2]] %>%
   dplyr::select(x, ymin, lower, middle, upper, ymax)
 #Caption: Pride of respondents in peer praise (for empathy) and control groups: difference in means (two sample t) test estimate: \myhl{(estimate=$0.487$, t=$3.113$,p=$0.002$, CI$[0.179, 0.795]$)}. Boxplot Control information: minima = 1, lower 25 = 2.33, middle = 3, upper 75 = 4, maxima = 5. Boxplot Peer praise empathy information: minima = 1.67, lower 25 = 3, middle = 3.33, upper 75 = 4.25, maxima = 5.
+
+ggsave("Figures/praise-pride_dist.pdf",  width = 11, height = 7)
+#Figures/praise-pride_dist.pdf 11x7
 ```
 
 
@@ -1363,10 +1524,22 @@ kable(summarize(data6PE_1, type = "factor", variables = c( "Sex",
 #Model
 #1) whites, see black images, who pass attention checks and the first trial they do
 model1_1<- glm(describeORfeel~PraiseEmpathy,data=data6PE_1,family=binomial(link="logit"))
-summary(model1_1)#N=218
+summary(model1_1)
+n_model <- nobs(model1_1)  # 204 exact n used by glm after dropping NAs
+coefs <- summary(model1_1)$coefficients
+p_exact <- coefs["PraiseEmpathy", "Pr(>|z|)"]   # Wald test p-value
+
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+
+stat_txt <- paste0(
+  "Logit coefficient on Peer Praise: ", sprintf("%.3f", coefs[2,1]),
+  " (p = ", p_txt, "), N=",n_model
+)
 
 # Put model estimates into temporary data.frames:
-main_variable_names<-c("Control","Peer Praise")
+main_variable_names<-c("Intercept","Peer Praise")
 model1Frame <- data.frame(Variable = main_variable_names,
                           Coefficient = coef(model1_1),
                           SE = summary(model1_1)$coefficients[, 2],
@@ -1379,11 +1552,18 @@ interval2 <- -qnorm((1-0.95)/2)  # 95% multiplier
 h1plot <- model1Frame %>%
   ggplot(aes(colour = modelName, group=modelName)) + scale_color_viridis(begin=0.5,end=0,option="D",discrete=T) + geom_hline(yintercept = 0, colour = gray(1/2), lty = 2) + ylab("Log odds coefficient for FEEL") + xlab("") + 
   geom_linerange(aes(x = Variable, ymin = Coefficient - SE*interval1, ymax = Coefficient + SE*interval1), lwd = 1.25, position = position_dodge(width = 1/2)) +
-  geom_pointrange(aes(x = Variable, y = Coefficient, ymin = Coefficient - SE*interval2, ymax = Coefficient + SE*interval2, fill=modelName), lwd = 0.75, position = position_dodge(width = 1/2),shape = 21) + scale_fill_viridis(begin=0.5,end=0,option="D",discrete=T) + coord_flip() + theme_bw() +  theme(legend.position = "none") + ggtitle("Peer praise effect on outgroup bias")
+  geom_pointrange(aes(x = Variable, y = Coefficient, ymin = Coefficient - SE*interval2, ymax = Coefficient + SE*interval2, fill=modelName), lwd = 0.75, position = position_dodge(width = 1/2),shape = 21) + scale_fill_viridis(begin=0.5,end=0,option="D",discrete=T) + coord_flip() + theme_bw() +  theme(legend.position = "none") + ggtitle("Peer praise effect on outgroup bias") +
+  annotate(
+    "text",
+    x = 2.5, y = -1,
+    label = stat_txt,
+    hjust = 0, vjust = 1,
+    color = "gray20", size = 4.5
+  )
 print(h1plot)
 
 ggsave(h1plot,file=here::here("Figures","mainfig_study6.pdf"),width=9,height=6)
-#caption: \textbf{Pilot Study 6 main effect: Peer-praise effect on outgroup bias for attentive white respondents, trial 1.} Points plotted at the center of bands are logistic regression coefficients of control (intercept = -1.073) and Peer Praise (=0.756) of choosing empathy for the outgroup regressed on Peer Praise (N=218). Bands are (thick) 90\% and (thin) 95\% confidence intervals. The baseline odds of choosing FEEL over DESCRIBE is 0.34 times; the odds of choosing FEEL over DESCRIBE if respondents are in the treatment group is 2.13 (p=0.01; 203 degrees of freedom;\myhl{ 95\% CI [1.18, 3.89]}) compared to the control group.
+#caption: \textbf{Pilot Study 6 main effect: Peer-praise effect on outgroup bias for attentive white respondents, trial 1.} Points plotted at the center of bands are logistic regression coefficients of control (intercept = -1.073) and Peer Praise (=0.756) of choosing empathy for the outgroup regressed on Peer Praise (N=204). Bands are (thick) 90\% and (thin) 95\% confidence intervals. The baseline odds of choosing FEEL over DESCRIBE is 0.34 times; the odds of choosing FEEL over DESCRIBE if respondents are in the treatment group is 2.13 (p=0.0195\% CI [1.18, 3.89]) compared to the control group.}
 ```
 
 # Study 7
@@ -1415,22 +1595,86 @@ Create SI Figure B.25 Pilot Study 7 main effect:
 model1a<-lm_robust(describeORfeel~CoParty_control,data7)%>% tidy %>% 
   mutate(.,
          outcome = "Choice Task",
-         Sample = "Full")  #nobs(lm_robust(describeORfeel~CoParty_control,data7)) = 267
+         Sample = "Full") 
+modelsummary<-summary(lm_robust(describeORfeel~CoParty_control,data7))
+n_model <- nobs(lm_robust(describeORfeel~CoParty_control,data7)) #267
+coefs <- modelsummary$coefficients
+p_exact <- coefs["CoParty_control", "Pr(>|t|)"]   #
+
+#text for Choice-Full model
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+
+stat_txt_choicefull <- paste0(
+  "OLS coefficient Co-Partisan Peer Praise:\n ", sprintf("%.3f", coefs[2,1]),
+  " (p = ", p_txt, "), N=",n_model
+)
+
 
 model1b<-lm_robust(describeORfeel~CoParty_control,data7_attentive)%>% tidy %>% 
   mutate(.,
          outcome = "Choice Task",
-         Sample = "Attentive") #nobs(lm_robust(describeORfeel~CoParty_control,data7_attentive))=100
+         Sample = "Attentive") 
 
+modelsummary<-summary(lm_robust(describeORfeel~CoParty_control,data7_attentive))
+n_model <- nobs(lm_robust(describeORfeel~CoParty_control,data7_attentive)) #100
+coefs <- modelsummary$coefficients
+p_exact <- coefs["CoParty_control", "Pr(>|t|)"]   #
+
+#text for Choice-Attentive model
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+
+stat_txt_choiceattentive <- paste0(
+  "OLS coefficient Co-Partisan Peer Praise:\n ", sprintf("%.3f", coefs[2,1]),
+  " (p = ", p_txt, "), N=",n_model
+)
+
+
+#BLM Full
 model2a<-lm_robust(BLM~CoParty_control,data7)%>% tidy %>% 
   mutate(.,
          outcome = "BLM",
          Sample = "Full") #nobs(lm_robust(BLM~CoParty_control,data7))=249
 
+modelsummary<-summary(lm_robust(BLM~CoParty_control,data7))
+n_model <- nobs(lm_robust(BLM~CoParty_control,data7)) #249
+coefs <- modelsummary$coefficients
+p_exact <- coefs["CoParty_control", "Pr(>|t|)"]   #
+
+#text for BLM-Full model
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+
+stat_txt_blmfull <- paste0(
+  "OLS coefficient Co-Partisan Peer Praise:\n ", sprintf("%.3f", coefs[2,1]),
+  " (p = ", p_txt, "), N=",n_model
+)
+
+
+#BLM-Attentive
 model2b<-lm_robust(BLM~CoParty_control,data7_attentive)%>% tidy %>% 
   mutate(.,
          outcome = "BLM",
          Sample = "Attentive") #nobs(lm_robust(BLM~CoParty_control,data7_attentive))=94
+modelsummary<-summary(lm_robust(BLM~CoParty_control,data7_attentive))
+n_model <- nobs(lm_robust(BLM~CoParty_control,data7_attentive)) #94
+coefs <- modelsummary$coefficients
+p_exact <- coefs["CoParty_control", "Pr(>|t|)"]   #
+
+#text for BLM-Full model
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+
+stat_txt_blmattentive <- paste0(
+  "OLS coefficient Co-Partisan Peer Praise:\n ", sprintf("%.3f", coefs[2,1]),
+  " (p = ", p_txt, "), N=",n_model
+)
+
 
 main_fx <- rbind(model1a,model1b,model2a,model2b) %>% 
   filter(.,
@@ -1457,7 +1701,36 @@ ggplot(main_fx, aes(x = outcome, y = estimate, color = Sample, shape = Sample)) 
         plot.caption = element_text(size = 10, family = "Times",hjust = -.02),
         panel.grid.minor = element_blank(),
         panel.background = element_blank(), 
-        axis.line = element_line(colour = "black"))
+        axis.line = element_line(colour = "black")) +
+  annotate( #choice-full
+    "text",
+    x = 0.5, y = -0.15,
+    label = stat_txt_choicefull,
+    hjust = 0, vjust = 1,
+    color = "firebrick2", size = 2.5
+  ) +
+    annotate( #choice-attentive
+    "text",
+    x = 1, y = 0.2,
+    label = stat_txt_choiceattentive,
+    hjust = 0, vjust = 1,
+    color = "dodgerblue2", size = 2.5
+  ) +
+  annotate( #blm-full
+    "text",
+    x = 1.4, y = 0.12,
+    label = stat_txt_blmfull,
+    hjust = 0, vjust = 1,
+    color = "firebrick2", size = 2.5
+  ) +
+  annotate( #blm-attentive
+    "text",
+    x = 2, y = -0.1,
+    label = stat_txt_blmattentive,
+    hjust = 0, vjust = 1,
+    color = "dodgerblue2", size = 2.5
+  ) 
+
 
 ggsave(file=here::here("Figures","partypraise-on-empathy-blm.pdf"),width=8,height=6)
 
