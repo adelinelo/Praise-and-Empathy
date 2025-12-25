@@ -77,11 +77,13 @@ end
 <!-- # Packages: -->
 
 ```{r,eval=TRUE,message=FALSE,warning=FALSE}
+
 rm(list=ls())
 
 pacman::p_load(here,Hmisc,dplyr,lubridate,gridExtra,grid,stargazer,hrbrthemes,quanteda,readtext,tidyverse,knitr,papeR,tidyr,kableExtra,ggpubr,printr,tab,lfe,sjPlot,clusterSEs,BBmisc,miceadds,mediation,estimatr,sensemakr,SentimentAnalysis,ggplot2,ggridges,viridis,BayesFactor,mediation,broom,scales)
 
 source(here::here("Code","R_fns.R"))
+exists("classify_education")
 ```
 
 # Study 1
@@ -185,6 +187,7 @@ data2$party<-factor(data2$party,levels=c("Republican","Independent","Democrat"))
 income_levels <- c("Less than 25k", "25k to less than 50k", "50k to less than 75k", "75k to less than 100k", "100k or more")
 # Convert the income variable to an ordered factor
 data1$income <- factor(data1$income, levels = income_levels, ordered = TRUE) 
+
 #Baseline Empathy - Post11--Empathy Battery (measured post DV)
   #inshoes
 data1$base_empathy1 <- as.numeric(gsub("\\D.*", "", data1$post11_1))
@@ -379,6 +382,8 @@ saveRDS(data2White,file=here::here("Data","Survey Data","Main Study 1","study1w2
 data1White_BH<-subset(data1White,Image_raceBH==1)
 #Subset to White who see BH image
 data2White_BH<-subset(data2White,Image_raceBH==1)
+
+
 ```
 
 ### Balance tests
@@ -1230,6 +1235,57 @@ summary(check4_6)
 ```
 
 No evidence to support education HTEs.
+
+
+#### Respondent Income 
+Are there heterogeneous treatment effects by income?
+
+```{r}
+#H1: DV is Behavioral Empathy
+check5_1<-lm(empathytask~PraiseControl*income,data=data1White_BH)
+summary(check5_1)
+#H2: DV is Self Reported Empathy 
+check5_2<-lm(post_empathyselfindex~PraiseControl*income,data=data1White)
+summary(check5_2)
+#H3: Behavioral Inclusion
+check5_3<-lm(behavioralindex~PraiseControl*income,data=data1White)
+summary(check5_3)
+#H4: DV is Attitudinal Inclusion
+check5_4<-lm(post_attitudinalindex~PraiseControl*income,data=data1White)
+summary(check5_4) 
+#H5:DV is Long-run behavioral inclusion 
+check5_5<-lm(empathytask~PraiseControl*income,data=data2White_BH)
+summary(check5_5)
+#H6:DV is Long-run attitudinal inclusion
+check5_6<-lm(post_attitudinalindex~PraiseControl*income,data=data2White)
+summary(check5_6) 
+```
+
+
+
+#### Respondent State 
+Are there heterogeneous treatment effects by state?
+
+```{r}
+#H1: DV is Behavioral Empathy
+check6_1<-lm(empathytask~PraiseControl*state,data=data1White_BH)
+summary(check6_1)
+#H2: DV is Self Reported Empathy 
+check6_2<-lm(post_empathyselfindex~PraiseControl*state,data=data1White)
+summary(check6_2)
+#H3: Behavioral Inclusion
+check6_3<-lm(behavioralindex~PraiseControl*state,data=data1White)
+summary(check6_3)
+#H4: DV is Attitudinal Inclusion
+check6_4<-lm(post_attitudinalindex~PraiseControl*state,data=data1White)
+summary(check6_4) 
+#H5:DV is Long-run behavioral inclusion 
+check6_5<-lm(empathytask~PraiseControl*state,data=data2White_BH)
+summary(check6_5)
+#H6:DV is Long-run attitudinal inclusion
+check6_6<-lm(post_attitudinalindex~PraiseControl*state,data=data2White)
+summary(check6_6) 
+```
 
 
 ### Did respondents engage in empathy more with white faces?

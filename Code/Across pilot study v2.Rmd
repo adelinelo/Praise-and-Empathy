@@ -1873,14 +1873,11 @@ long_data3D<-subset(long_data3,Party=="Democrat"|Party=="Strong Democrat"|Party=
 long_data3R<-subset(long_data3,Party=="Republican"|Party=="Strong Republican"|Party=="Lean Republican")
 long_data3I<-subset(long_data3,Party=="Independent"|Party=="Lean Democrat"|Party=="Lean Republican")
 #models
-ate3D <- miceadds::glm.cluster( data=long_data3D, formula=describeORfeel ~ PraiseEmpathy,
-               cluster="ID", family=binomial(link="logit"))
+ate3D <- miceadds::glm.cluster( data=long_data3D, formula=describeORfeel ~ PraiseEmpathy, cluster="ID", family=binomial(link="logit"))
 summary(ate3D) 
-ate3R <- miceadds::glm.cluster( data=long_data3R, formula=describeORfeel ~ PraiseEmpathy,
-               cluster="ID", family=binomial(link="logit"))
+ate3R <- miceadds::glm.cluster( data=long_data3R, formula=describeORfeel ~ PraiseEmpathy, cluster="ID", family=binomial(link="logit"))
 summary(ate3R) 
-ate3I <- miceadds::glm.cluster( data=long_data3I, formula=describeORfeel ~ PraiseEmpathy,
-               cluster="ID", family=binomial(link="logit"))
+ate3I <- miceadds::glm.cluster( data=long_data3I, formula=describeORfeel ~ PraiseEmpathy, cluster="ID", family=binomial(link="logit"))
 summary(ate3I) 
 #study 5/6
 long_data5D<-subset(long_datapool,Party=="Democrat"|Party=="Strong Democrat"|Party=="Lean Democrat")
@@ -1931,6 +1928,24 @@ plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
 plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
 plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
+#keep annotation of text
+#In order, Dem-3-5-Pool, Rep-3-5-Pool, Indep-3-5-Pool 
+N<- c(1455,1214,2669,1890,2703,1140,333,783)
+n<- c(97,408,505,813,400,76,111,141)
+
+coefs <- modelsummary$coefficients
+p_exact <- coefs["CoParty_control", "Pr(>|t|)"]   #
+
+#text for BLM-Full model
+p_txt <- ifelse(p_exact < 1e-3,
+                format(p_exact, scientific = TRUE, digits = 2),
+                formatC(p_exact, format = "f", digits = 4))
+
+stat_txt_blmattentive <- paste0(
+  "OLS coefficient Co-Partisan Peer Praise:\n ", sprintf("%.3f", coefs[2,1]),
+  " (p = ", p_txt, "), N=",n_model
+)
+
 #plot
 plot_data$type<-factor(plot_data$type,levels = c("Democrat","Republican","Independent"))
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
