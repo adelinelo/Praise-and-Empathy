@@ -866,16 +866,38 @@ mediation_norms <- mediate(norms_med, norms_out, treat = "PraiseControl",
 sens.out <- medsens(mediation_norms, rho.by = 0.1, effect.type = "both") 
 
 summary(mediation_norms)
-par(mar=c(5,6.5,3.2,01))
-plot(mediation_norms, labels=c("ACME\n(Norms)",
-                            "Direct Effect \n(Behavioral Inclusion Index)", "Total Effect"))
+#N size used: 4047
+#annotation info:
 
+
+est <- c(ACME = mediation_norms$d.avg,#0.001414,
+  ADE  = mediation_norms$z.avg,#0.029139,
+  TE   = mediation_norms$tau.coef)#0.030553
+pval <- c(ACME = mediation_norms$d.avg.p,
+  ADE  = mediation_norms$z.avg.p,
+  TE   = mediation_norms$tau.p)
+lab <- paste0(formatC(est, format = "f", digits = 4),
+  "\n",
+  "p = ", formatC(pval, format = "f", digits = 3)
+)
+
+par(mar=c(5,6.5,3.3,01))
+plot(mediation_norms, labels=c("ACME\n(Norms)",
+                            "Direct Effect \n(Behavioral\n Inclusion)", "Total Effect"))
+# ---- add text above each estimate ----
+text( x = 0.001, y = 3, labels = lab[1], cex = 0.8) #acme
+text( x = 0.03, y = 2, labels = lab[2], cex = 0.8) #ade
+text( x = 0.03, y = 1, labels = lab[3], cex = 0.8) #te
 # save plot to PDF: Appendix Figure D.42
 pdf(here::here("Figures/si_fig42_med_norms.pdf"), width = 7, height = 5) 
 par(mar = c(5, 6.5, 3.2, 0.1))
 plot(mediation_norms, labels = c("ACME\n(Norms)",
-                                 "Direct Effect \n(Behavioral Inclusion Index)",
+                                 "Direct Effect \n(Behavioral\n Inclusion)",
                                  "Total Effect"))
+# ---- add text above each estimate ----
+text( x = 0.001, y = 3, labels = lab[1], cex = 0.8) #acme
+text( x = 0.03, y = 2, labels = lab[2], cex = 0.8) #ade
+text( x = 0.03, y = 1, labels = lab[3], cex = 0.8) #te
 dev.off()
 
 # plot(sens.out, sign.prod="positive", sens.par = "R2", r.type = c("residual"), 
