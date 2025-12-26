@@ -1267,6 +1267,10 @@ summary(check5_6)
 Are there heterogeneous treatment effects by state?
 
 ```{r}
+
+data1White_BH$state<-factor(data1White_BH$state)
+data1White_BH$state <- relevel(data1White_BH$state, ref = "Pennsylvania")
+
 #H1: DV is Behavioral Empathy
 check6_1<-lm(empathytask~PraiseControl*state,data=data1White_BH)
 summary(check6_1)
@@ -1285,6 +1289,19 @@ summary(check6_5)
 #H6:DV is Long-run attitudinal inclusion
 check6_6<-lm(post_attitudinalindex~PraiseControl*state,data=data2White)
 summary(check6_6) 
+
+
+#Extra check -- add party_id in cases where there was significant interactions
+
+check6_2id<-lm(post_empathyselfindex~PraiseControl*state+party_id,data=data1White)
+summary(check6_2id)
+
+check6_4id<-lm(post_attitudinalindex~PraiseControl*state+party_id,data=data1White)
+summary(check6_4id) 
+
+check6_6id<-lm(post_attitudinalindex~PraiseControl*state+party_id,data=data2White)
+summary(check6_6id) 
+
 ```
 
 

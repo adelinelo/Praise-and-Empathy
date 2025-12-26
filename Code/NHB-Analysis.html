@@ -3407,7 +3407,7 @@ stargazer(
 )</code></pre>
 <pre><code>## 
 ## % Table created by stargazer v.5.2.3 by Marek Hlavac, Social Policy Institute. E-mail: marek.hlavac at gmail.com
-## % Date and time: Wed, Dec 24, 2025 - 20:58:56
+## % Date and time: Thu, Dec 25, 2025 - 15:30:29
 ## \begin{table}[!htbp] \centering 
 ##   \caption{H1-H6 models} 
 ##   \label{} 
@@ -4452,7 +4452,10 @@ summary(check5_6) </code></pre>
 <h4><span class="header-section-number">1.7.3.5</span> Respondent
 State</h4>
 <p>Are there heterogeneous treatment effects by state?</p>
-<pre class="r"><code>#H1: DV is Behavioral Empathy
+<pre class="r"><code>data1White_BH$state&lt;-factor(data1White_BH$state)
+data1White_BH$state &lt;- relevel(data1White_BH$state, ref = &quot;Pennsylvania&quot;)
+
+#H1: DV is Behavioral Empathy
 check6_1&lt;-lm(empathytask~PraiseControl*state,data=data1White_BH)
 summary(check6_1)</code></pre>
 <pre><code>## 
@@ -4464,212 +4467,212 @@ summary(check6_1)</code></pre>
 ## -0.6250 -0.3905 -0.2632  0.5778  0.8889 
 ## 
 ## Coefficients: (6 not defined because of singularities)
-##                                           Estimate Std. Error t value Pr(&gt;|t|)
-## (Intercept)                              3.333e-01  1.381e-01   2.414   0.0158
-## PraiseControl                           -2.083e-01  1.827e-01  -1.140   0.2542
-## stateAlaska                             -2.045e-03  1.431e-01  -0.014   0.9886
-## stateArizona                             1.961e-01  1.535e-01   1.278   0.2015
-## stateArkansas                           -1.333e-01  2.546e-01  -0.524   0.6006
-## stateCalifornia                          7.331e-02  1.415e-01   0.518   0.6044
-## stateColorado                            4.762e-02  1.731e-01   0.275   0.7833
-## stateConnecticut                         4.167e-02  1.619e-01   0.257   0.7970
-## stateDelaware                           -1.333e-01  2.546e-01  -0.524   0.6006
-## stateDistrict of Columbia                6.667e-01  4.979e-01   1.339   0.1807
-## stateFlorida                             1.111e-01  1.492e-01   0.745   0.4564
-## stateGeorgia                             5.952e-03  1.522e-01   0.039   0.9688
-## stateHawaii                             -2.083e-01  2.183e-01  -0.954   0.3401
-## stateIdaho                               1.667e-01  2.762e-01   0.603   0.5463
-## stateIllinois                            9.132e-02  1.490e-01   0.613   0.5400
-## stateIndiana                            -1.873e-02  1.427e-01  -0.131   0.8956
-## stateIowa                               -5.164e-14  2.392e-01   0.000   1.0000
-## stateKansas                             -6.695e-14  3.088e-01   0.000   1.0000
-## stateKentucky                           -6.580e-14  2.392e-01   0.000   1.0000
-## stateLouisiana                           6.667e-02  2.048e-01   0.325   0.7448
-## stateMaine                               1.667e-01  3.654e-01   0.456   0.6483
-## stateMaryland                            1.828e-01  1.626e-01   1.124   0.2611
-## stateMassachusetts                       8.772e-03  1.584e-01   0.055   0.9558
-## stateMichigan                            2.177e-01  1.541e-01   1.413   0.1578
-## stateMinnesota                          -3.333e-01  2.762e-01  -1.207   0.2276
-## stateMississippi                        -3.333e-01  2.275e-01  -1.465   0.1430
-## stateMissouri                            1.944e-01  1.595e-01   1.219   0.2228
-## stateMontana                            -8.333e-02  2.762e-01  -0.302   0.7629
-## stateNebraska                            3.750e-01  3.588e-01   1.045   0.2960
-## stateNevada                             -5.753e-14  3.088e-01   0.000   1.0000
-## stateNew Hampshire                       8.750e-01  4.931e-01   1.774   0.0761
-## stateNew Jersey                          2.778e-02  1.595e-01   0.174   0.8617
-## stateNew Mexico                         -3.333e-01  3.654e-01  -0.912   0.3617
-## stateNew York                            6.667e-02  1.503e-01   0.444   0.6574
-## stateNorth Carolina                      1.778e-01  1.554e-01   1.144   0.2528
-## stateNorth Dakota                        6.667e-01  4.979e-01   1.339   0.1807
-## stateOhio                                6.289e-03  1.529e-01   0.041   0.9672
-## stateOklahoma                           -3.333e-01  4.979e-01  -0.669   0.5032
-## stateOregon                              2.667e-01  2.546e-01   1.047   0.2951
-## statePennsylvania                        8.889e-02  1.554e-01   0.572   0.5674
-## statePuerto Rico                         3.750e-01  3.588e-01   1.045   0.2960
-## stateRhode Island                       -1.250e-01  4.931e-01  -0.253   0.7999
-## stateSouth Carolina                     -2.222e-01  2.109e-01  -1.053   0.2922
-## stateTennessee                           3.030e-02  1.524e-01   0.199   0.8424
-## stateTexas                              -8.796e-02  1.419e-01  -0.620   0.5353
-## stateUtah                                9.524e-02  2.275e-01   0.419   0.6755
-## stateVermont                            -3.333e-01  4.979e-01  -0.669   0.5032
-## stateVirginia                            1.085e-01  1.562e-01   0.695   0.4872
-## stateWashington                          3.333e-02  1.513e-01   0.220   0.8256
-## stateWest Virginia                       1.667e-01  3.654e-01   0.456   0.6483
-## stateWisconsin                           1.190e-01  1.566e-01   0.760   0.4471
-## stateWyoming                             6.667e-01  4.979e-01   1.339   0.1807
-## PraiseControl:stateAlaska                2.120e-01  1.895e-01   1.119   0.2632
-## PraiseControl:stateArizona               2.892e-02  2.088e-01   0.139   0.8898
-## PraiseControl:stateArkansas              4.083e-01  3.534e-01   1.155   0.2480
-## PraiseControl:stateCalifornia            1.992e-01  1.878e-01   1.060   0.2890
-## PraiseControl:stateColorado              1.607e-01  2.440e-01   0.659   0.5101
-## PraiseControl:stateConnecticut           1.437e-01  2.200e-01   0.653   0.5138
-## PraiseControl:stateDelaware              1.008e+00  3.942e-01   2.558   0.0106
-## PraiseControl:stateDistrict of Columbia         NA         NA      NA       NA
-## PraiseControl:stateFlorida               1.544e-01  1.968e-01   0.784   0.4329
-## PraiseControl:stateGeorgia               3.384e-01  2.053e-01   1.649   0.0993
-## PraiseControl:stateHawaii                5.833e-01  3.010e-01   1.938   0.0527
-## PraiseControl:stateIdaho                 3.333e-01  3.452e-01   0.966   0.3344
-## PraiseControl:stateIllinois              4.683e-02  1.973e-01   0.237   0.8124
-## PraiseControl:stateIndiana               2.214e-01  1.896e-01   1.168   0.2430
-## PraiseControl:stateIowa                  8.750e-01  4.312e-01   2.029   0.0425
-## PraiseControl:stateKansas                2.750e-01  3.942e-01   0.698   0.4855
-## PraiseControl:stateKentucky              1.607e-01  3.228e-01   0.498   0.6186
-## PraiseControl:stateLouisiana             5.833e-02  2.913e-01   0.200   0.8413
-## PraiseControl:stateMaine                -2.917e-01  6.137e-01  -0.475   0.6346
-## PraiseControl:stateMaryland              1.922e-01  2.171e-01   0.886   0.3759
-## PraiseControl:stateMassachusetts         2.716e-01  2.135e-01   1.272   0.2033
-## PraiseControl:stateMichigan              2.249e-01  2.103e-01   1.069   0.2850
-## PraiseControl:stateMinnesota             2.083e-01  3.844e-01   0.542   0.5879
-## PraiseControl:stateMississippi           4.583e-01  3.511e-01   1.305   0.1918
-## PraiseControl:stateMissouri              1.389e-01  2.220e-01   0.626   0.5315
-## PraiseControl:stateMontana              -4.167e-02  4.528e-01  -0.092   0.9267
-## PraiseControl:stateNebraska                     NA         NA      NA       NA
-## PraiseControl:stateNevada                8.750e-01  5.818e-01   1.504   0.1327
-## PraiseControl:stateNew Hampshire                NA         NA      NA       NA
-## PraiseControl:stateNew Jersey            2.420e-01  2.139e-01   1.131   0.2581
-## PraiseControl:stateNew Mexico            6.083e-01  4.400e-01   1.383   0.1668
-## PraiseControl:stateNew York              2.927e-01  2.012e-01   1.455   0.1458
-## PraiseControl:stateNorth Carolina        1.026e-01  2.113e-01   0.486   0.6272
-## PraiseControl:stateNorth Dakota                 NA         NA      NA       NA
-## PraiseControl:stateOhio                  2.937e-01  2.084e-01   1.410   0.1587
-## PraiseControl:stateOklahoma              4.583e-01  5.393e-01   0.850   0.3954
-## PraiseControl:stateOregon                5.278e-02  3.234e-01   0.163   0.8704
-## PraiseControl:statePennsylvania          2.611e-01  2.102e-01   1.242   0.2142
-## PraiseControl:statePuerto Rico                  NA         NA      NA       NA
-## PraiseControl:stateRhode Island                 NA         NA      NA       NA
-## PraiseControl:stateSouth Carolina        5.258e-01  2.741e-01   1.918   0.0552
-## PraiseControl:stateTennessee             6.692e-02  2.064e-01   0.324   0.7458
-## PraiseControl:stateTexas                 1.858e-01  1.889e-01   0.984   0.3254
-## PraiseControl:stateUtah                  1.131e-01  3.773e-01   0.300   0.7644
-## PraiseControl:stateVermont               2.083e-01  7.008e-01   0.297   0.7663
-## PraiseControl:stateVirginia              5.219e-02  2.101e-01   0.248   0.8039
-## PraiseControl:stateWashington            2.471e-01  2.083e-01   1.186   0.2356
-## PraiseControl:stateWest Virginia        -2.917e-01  6.137e-01  -0.475   0.6346
-## PraiseControl:stateWisconsin             2.049e-01  2.085e-01   0.983   0.3258
-## PraiseControl:stateWyoming              -7.917e-01  7.008e-01  -1.130   0.2587
-##                                          
-## (Intercept)                             *
-## PraiseControl                            
-## stateAlaska                              
-## stateArizona                             
-## stateArkansas                            
-## stateCalifornia                          
-## stateColorado                            
-## stateConnecticut                         
-## stateDelaware                            
-## stateDistrict of Columbia                
-## stateFlorida                             
-## stateGeorgia                             
-## stateHawaii                              
-## stateIdaho                               
-## stateIllinois                            
-## stateIndiana                             
-## stateIowa                                
-## stateKansas                              
-## stateKentucky                            
-## stateLouisiana                           
-## stateMaine                               
-## stateMaryland                            
-## stateMassachusetts                       
-## stateMichigan                            
-## stateMinnesota                           
-## stateMississippi                         
-## stateMissouri                            
-## stateMontana                             
-## stateNebraska                            
-## stateNevada                              
-## stateNew Hampshire                      .
-## stateNew Jersey                          
-## stateNew Mexico                          
-## stateNew York                            
-## stateNorth Carolina                      
-## stateNorth Dakota                        
-## stateOhio                                
-## stateOklahoma                            
-## stateOregon                              
-## statePennsylvania                        
-## statePuerto Rico                         
-## stateRhode Island                        
-## stateSouth Carolina                      
-## stateTennessee                           
-## stateTexas                               
-## stateUtah                                
-## stateVermont                             
-## stateVirginia                            
-## stateWashington                          
-## stateWest Virginia                       
-## stateWisconsin                           
-## stateWyoming                             
-## PraiseControl:stateAlaska                
-## PraiseControl:stateArizona               
-## PraiseControl:stateArkansas              
-## PraiseControl:stateCalifornia            
-## PraiseControl:stateColorado              
-## PraiseControl:stateConnecticut           
-## PraiseControl:stateDelaware             *
-## PraiseControl:stateDistrict of Columbia  
-## PraiseControl:stateFlorida               
-## PraiseControl:stateGeorgia              .
-## PraiseControl:stateHawaii               .
-## PraiseControl:stateIdaho                 
-## PraiseControl:stateIllinois              
-## PraiseControl:stateIndiana               
-## PraiseControl:stateIowa                 *
-## PraiseControl:stateKansas                
-## PraiseControl:stateKentucky              
-## PraiseControl:stateLouisiana             
-## PraiseControl:stateMaine                 
-## PraiseControl:stateMaryland              
-## PraiseControl:stateMassachusetts         
-## PraiseControl:stateMichigan              
-## PraiseControl:stateMinnesota             
-## PraiseControl:stateMississippi           
-## PraiseControl:stateMissouri              
-## PraiseControl:stateMontana               
-## PraiseControl:stateNebraska              
-## PraiseControl:stateNevada                
-## PraiseControl:stateNew Hampshire         
-## PraiseControl:stateNew Jersey            
-## PraiseControl:stateNew Mexico            
-## PraiseControl:stateNew York              
-## PraiseControl:stateNorth Carolina        
-## PraiseControl:stateNorth Dakota          
-## PraiseControl:stateOhio                  
-## PraiseControl:stateOklahoma              
-## PraiseControl:stateOregon                
-## PraiseControl:statePennsylvania          
-## PraiseControl:statePuerto Rico           
-## PraiseControl:stateRhode Island          
-## PraiseControl:stateSouth Carolina       .
-## PraiseControl:stateTennessee             
-## PraiseControl:stateTexas                 
-## PraiseControl:stateUtah                  
-## PraiseControl:stateVermont               
-## PraiseControl:stateVirginia              
-## PraiseControl:stateWashington            
-## PraiseControl:stateWest Virginia         
-## PraiseControl:stateWisconsin             
-## PraiseControl:stateWyoming               
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                              0.422222   0.071313   5.921 3.51e-09
+## PraiseControl                            0.052778   0.103955   0.508   0.6117
+## stateAlabama                            -0.088889   0.155422  -0.572   0.5674
+## stateAlaska                             -0.090934   0.080557  -1.129   0.2591
+## stateArizona                             0.107190   0.097840   1.096   0.2733
+## stateArkansas                           -0.222222   0.225510  -0.985   0.3245
+## stateCalifornia                         -0.015583   0.077686  -0.201   0.8410
+## stateColorado                           -0.041270   0.126424  -0.326   0.7441
+## stateConnecticut                        -0.047222   0.110621  -0.427   0.6695
+## stateDelaware                           -0.222222   0.225510  -0.985   0.3245
+## stateDistrict of Columbia                0.577778   0.483666   1.195   0.2323
+## stateFlorida                             0.022222   0.090906   0.244   0.8069
+## stateGeorgia                            -0.082937   0.095771  -0.866   0.3866
+## stateHawaii                             -0.297222   0.183552  -1.619   0.1055
+## stateIdaho                               0.077778   0.249594   0.312   0.7554
+## stateIllinois                            0.002435   0.090666   0.027   0.9786
+## stateIndiana                            -0.107615   0.079820  -1.348   0.1777
+## stateIowa                               -0.088889   0.207910  -0.428   0.6690
+## stateKansas                             -0.088889   0.285251  -0.312   0.7554
+## stateKentucky                           -0.088889   0.207910  -0.428   0.6690
+## stateLouisiana                          -0.022222   0.167243  -0.133   0.8943
+## stateMaine                               0.077778   0.345701   0.225   0.8220
+## stateMaryland                            0.093907   0.111659   0.841   0.4004
+## stateMassachusetts                      -0.080117   0.105394  -0.760   0.4472
+## stateMichigan                            0.128798   0.098772   1.304   0.1923
+## stateMinnesota                          -0.422222   0.249594  -1.692   0.0908
+## stateMississippi                        -0.422222   0.194366  -2.172   0.0299
+## stateMissouri                            0.105556   0.106969   0.987   0.3238
+## stateMontana                            -0.172222   0.249594  -0.690   0.4902
+## stateNebraska                            0.025000   0.346619   0.072   0.9425
+## stateNevada                             -0.088889   0.285251  -0.312   0.7554
+## stateNew Hampshire                       0.525000   0.484323   1.084   0.2784
+## stateNew Jersey                         -0.061111   0.106969  -0.571   0.5678
+## stateNew Mexico                         -0.422222   0.345701  -1.221   0.2220
+## stateNew York                           -0.022222   0.092770  -0.240   0.8107
+## stateNorth Carolina                      0.088889   0.100851   0.881   0.3782
+## stateNorth Dakota                        0.577778   0.483666   1.195   0.2323
+## stateOhio                               -0.082600   0.096971  -0.852   0.3944
+## stateOklahoma                           -0.422222   0.483666  -0.873   0.3827
+## stateOregon                              0.177778   0.225510   0.788   0.4306
+## statePuerto Rico                         0.025000   0.346619   0.072   0.9425
+## stateRhode Island                       -0.475000   0.484323  -0.981   0.3268
+## stateSouth Carolina                     -0.311111   0.174680  -1.781   0.0750
+## stateTennessee                          -0.058586   0.096158  -0.609   0.5424
+## stateTexas                              -0.176852   0.078390  -2.256   0.0241
+## stateUtah                                0.006349   0.194366   0.033   0.9739
+## stateVermont                            -0.422222   0.483666  -0.873   0.3827
+## stateVirginia                            0.019638   0.102017   0.192   0.8474
+## stateWashington                         -0.055556   0.094338  -0.589   0.5560
+## stateWest Virginia                       0.077778   0.345701   0.225   0.8220
+## stateWisconsin                           0.030159   0.102636   0.294   0.7689
+## stateWyoming                             0.577778   0.483666   1.195   0.2323
+## PraiseControl:stateAlabama              -0.261111   0.210191  -1.242   0.2142
+## PraiseControl:stateAlaska               -0.049091   0.115490  -0.425   0.6708
+## PraiseControl:stateArizona              -0.232190   0.144966  -1.602   0.1093
+## PraiseControl:stateArkansas              0.147222   0.319915   0.460   0.6454
+## PraiseControl:stateCalifornia           -0.061927   0.112755  -0.549   0.5829
+## PraiseControl:stateColorado             -0.100397   0.192252  -0.522   0.6016
+## PraiseControl:stateConnecticut          -0.117433   0.160778  -0.730   0.4652
+## PraiseControl:stateDelaware              0.747222   0.364498   2.050   0.0404
+## PraiseControl:stateDistrict of Columbia        NA         NA      NA       NA
+## PraiseControl:stateFlorida              -0.106746   0.127140  -0.840   0.4012
+## PraiseControl:stateGeorgia               0.077324   0.139870   0.553   0.5804
+## PraiseControl:stateHawaii                0.322222   0.260804   1.235   0.2167
+## PraiseControl:stateIdaho                 0.072222   0.310845   0.232   0.8163
+## PraiseControl:stateIllinois             -0.214277   0.127869  -1.676   0.0939
+## PraiseControl:stateIndiana              -0.039701   0.115695  -0.343   0.7315
+## PraiseControl:stateIowa                  0.613889   0.404192   1.519   0.1289
+## PraiseControl:stateKansas                0.013889   0.364498   0.038   0.9696
+## PraiseControl:stateKentucky             -0.100397   0.285728  -0.351   0.7253
+## PraiseControl:stateLouisiana            -0.202778   0.249594  -0.812   0.4166
+## PraiseControl:stateMaine                -0.552778   0.595044  -0.929   0.3530
+## PraiseControl:stateMaryland             -0.068907   0.156671  -0.440   0.6601
+## PraiseControl:stateMassachusetts         0.010522   0.151704   0.069   0.9447
+## PraiseControl:stateMichigan             -0.036231   0.147180  -0.246   0.8056
+## PraiseControl:stateMinnesota            -0.052778   0.353879  -0.149   0.8815
+## PraiseControl:stateMississippi           0.197222   0.317350   0.621   0.5343
+## PraiseControl:stateMissouri             -0.122222   0.163398  -0.748   0.4545
+## PraiseControl:stateMontana              -0.302778   0.427132  -0.709   0.4785
+## PraiseControl:stateNebraska                    NA         NA      NA       NA
+## PraiseControl:stateNevada                0.613889   0.562082   1.092   0.2748
+## PraiseControl:stateNew Hampshire               NA         NA      NA       NA
+## PraiseControl:stateNew Jersey           -0.019152   0.152269  -0.126   0.8999
+## PraiseControl:stateNew Mexico            0.347222   0.413521   0.840   0.4011
+## PraiseControl:stateNew York              0.031597   0.133803   0.236   0.8133
+## PraiseControl:stateNorth Carolina       -0.158483   0.148584  -1.067   0.2862
+## PraiseControl:stateNorth Dakota                NA         NA      NA       NA
+## PraiseControl:stateOhio                  0.032600   0.144381   0.226   0.8214
+## PraiseControl:stateOklahoma              0.197222   0.517938   0.381   0.7034
+## PraiseControl:stateOregon               -0.208333   0.286363  -0.728   0.4670
+## PraiseControl:statePuerto Rico                 NA         NA      NA       NA
+## PraiseControl:stateRhode Island                NA         NA      NA       NA
+## PraiseControl:stateSouth Carolina        0.264683   0.229304   1.154   0.2485
+## PraiseControl:stateTennessee            -0.194192   0.141609  -1.371   0.1704
+## PraiseControl:stateTexas                -0.075322   0.114498  -0.658   0.5107
+## PraiseControl:stateUtah                 -0.148016   0.346095  -0.428   0.6689
+## PraiseControl:stateVermont              -0.052778   0.684471  -0.077   0.9385
+## PraiseControl:stateVirginia             -0.208924   0.146893  -1.422   0.1550
+## PraiseControl:stateWashington           -0.014039   0.144242  -0.097   0.9225
+## PraiseControl:stateWest Virginia        -0.552778   0.595044  -0.929   0.3530
+## PraiseControl:stateWisconsin            -0.056179   0.144657  -0.388   0.6978
+## PraiseControl:stateWyoming              -1.052778   0.684471  -1.538   0.1241
+##                                            
+## (Intercept)                             ***
+## PraiseControl                              
+## stateAlabama                               
+## stateAlaska                                
+## stateArizona                               
+## stateArkansas                              
+## stateCalifornia                            
+## stateColorado                              
+## stateConnecticut                           
+## stateDelaware                              
+## stateDistrict of Columbia                  
+## stateFlorida                               
+## stateGeorgia                               
+## stateHawaii                                
+## stateIdaho                                 
+## stateIllinois                              
+## stateIndiana                               
+## stateIowa                                  
+## stateKansas                                
+## stateKentucky                              
+## stateLouisiana                             
+## stateMaine                                 
+## stateMaryland                              
+## stateMassachusetts                         
+## stateMichigan                              
+## stateMinnesota                          .  
+## stateMississippi                        *  
+## stateMissouri                              
+## stateMontana                               
+## stateNebraska                              
+## stateNevada                                
+## stateNew Hampshire                         
+## stateNew Jersey                            
+## stateNew Mexico                            
+## stateNew York                              
+## stateNorth Carolina                        
+## stateNorth Dakota                          
+## stateOhio                                  
+## stateOklahoma                              
+## stateOregon                                
+## statePuerto Rico                           
+## stateRhode Island                          
+## stateSouth Carolina                     .  
+## stateTennessee                             
+## stateTexas                              *  
+## stateUtah                                  
+## stateVermont                               
+## stateVirginia                              
+## stateWashington                            
+## stateWest Virginia                         
+## stateWisconsin                             
+## stateWyoming                               
+## PraiseControl:stateAlabama                 
+## PraiseControl:stateAlaska                  
+## PraiseControl:stateArizona                 
+## PraiseControl:stateArkansas                
+## PraiseControl:stateCalifornia              
+## PraiseControl:stateColorado                
+## PraiseControl:stateConnecticut             
+## PraiseControl:stateDelaware             *  
+## PraiseControl:stateDistrict of Columbia    
+## PraiseControl:stateFlorida                 
+## PraiseControl:stateGeorgia                 
+## PraiseControl:stateHawaii                  
+## PraiseControl:stateIdaho                   
+## PraiseControl:stateIllinois             .  
+## PraiseControl:stateIndiana                 
+## PraiseControl:stateIowa                    
+## PraiseControl:stateKansas                  
+## PraiseControl:stateKentucky                
+## PraiseControl:stateLouisiana               
+## PraiseControl:stateMaine                   
+## PraiseControl:stateMaryland                
+## PraiseControl:stateMassachusetts           
+## PraiseControl:stateMichigan                
+## PraiseControl:stateMinnesota               
+## PraiseControl:stateMississippi             
+## PraiseControl:stateMissouri                
+## PraiseControl:stateMontana                 
+## PraiseControl:stateNebraska                
+## PraiseControl:stateNevada                  
+## PraiseControl:stateNew Hampshire           
+## PraiseControl:stateNew Jersey              
+## PraiseControl:stateNew Mexico              
+## PraiseControl:stateNew York                
+## PraiseControl:stateNorth Carolina          
+## PraiseControl:stateNorth Dakota            
+## PraiseControl:stateOhio                    
+## PraiseControl:stateOklahoma                
+## PraiseControl:stateOregon                  
+## PraiseControl:statePuerto Rico             
+## PraiseControl:stateRhode Island            
+## PraiseControl:stateSouth Carolina          
+## PraiseControl:stateTennessee               
+## PraiseControl:stateTexas                   
+## PraiseControl:stateUtah                    
+## PraiseControl:stateVermont                 
+## PraiseControl:stateVirginia                
+## PraiseControl:stateWashington              
+## PraiseControl:stateWest Virginia           
+## PraiseControl:stateWisconsin               
+## PraiseControl:stateWyoming                 
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
@@ -5802,6 +5805,719 @@ summary(check6_6) </code></pre>
 ##   (813 observations deleted due to missingness)
 ## Multiple R-squared:  0.1241, Adjusted R-squared:  0.09764 
 ## F-statistic: 4.685 on 92 and 3041 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#Extra check -- add party_id in cases where there was significant interactions
+
+check6_2id&lt;-lm(post_empathyselfindex~PraiseControl*state+party_id,data=data1White)
+summary(check6_2id)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = post_empathyselfindex ~ PraiseControl * state + 
+##     party_id, data = data1White)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -2.62183 -0.18799  0.04032  0.25969  1.46379 
+## 
+## Coefficients: (6 not defined because of singularities)
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                              2.483704   0.114454  21.700  &lt; 2e-16
+## PraiseControl                           -0.346337   0.148977  -2.325 0.020135
+## stateAlaska                             -0.180295   0.117478  -1.535 0.124934
+## stateArizona                             0.006917   0.126495   0.055 0.956397
+## stateArkansas                           -0.235215   0.215172  -1.093 0.274394
+## stateCalifornia                         -0.149663   0.116232  -1.288 0.197952
+## stateColorado                           -0.057447   0.140990  -0.407 0.683699
+## stateConnecticut                        -0.245186   0.132463  -1.851 0.064246
+## stateDelaware                           -0.270874   0.202111  -1.340 0.180249
+## stateDistrict of Columbia                0.247999   0.262357   0.945 0.344577
+## stateFlorida                            -0.171447   0.121989  -1.405 0.159971
+## stateGeorgia                            -0.091727   0.124356  -0.738 0.460792
+## stateHawaii                             -0.163452   0.184133  -0.888 0.374765
+## stateIdaho                              -1.143676   0.234337  -4.880 1.10e-06
+## stateIllinois                           -0.067987   0.121818  -0.558 0.576805
+## stateIndiana                            -0.163399   0.117209  -1.394 0.163372
+## stateIowa                               -0.275915   0.201820  -1.367 0.171661
+## stateKansas                             -0.202425   0.262117  -0.772 0.440002
+## stateKentucky                           -0.080575   0.201813  -0.399 0.689726
+## stateLouisiana                          -0.305260   0.167657  -1.821 0.068722
+## stateMaine                              -1.029990   0.310519  -3.317 0.000918
+## stateMaryland                            0.009064   0.134935   0.067 0.946448
+## stateMassachusetts                       0.020956   0.130158   0.161 0.872096
+## stateMichigan                           -0.006730   0.126912  -0.053 0.957715
+## stateMinnesota                          -0.626491   0.233851  -2.679 0.007414
+## stateMississippi                        -0.330990   0.183966  -1.799 0.072064
+## stateMissouri                            0.070772   0.132258   0.535 0.592605
+## stateMontana                            -0.152218   0.215281  -0.707 0.479565
+## stateNebraska                           -1.590448   0.304812  -5.218 1.90e-07
+## stateNevada                              0.361680   0.234291   1.544 0.122736
+## stateNew Hampshire                       0.852553   0.420644   2.027 0.042752
+## stateNew Jersey                          0.071227   0.131470   0.542 0.588006
+## stateNew Mexico                          0.063215   0.310712   0.203 0.838793
+## stateNew York                           -0.176474   0.123858  -1.425 0.154291
+## stateNorth Carolina                     -0.018035   0.125998  -0.143 0.886188
+## stateNorth Dakota                        0.243262   0.311414   0.781 0.434759
+## stateOhio                                0.002866   0.125412   0.023 0.981771
+## stateOklahoma                            0.183804   0.424352   0.433 0.664937
+## stateOregon                             -0.434841   0.201993  -2.153 0.031398
+## statePennsylvania                       -0.052990   0.126427  -0.419 0.675141
+## statePuerto Rico                         0.089599   0.305377   0.293 0.769228
+## stateRhode Island                        0.214599   0.305377   0.703 0.482263
+## stateSouth Carolina                     -0.232191   0.172030  -1.350 0.177187
+## stateTennessee                           0.016379   0.125601   0.130 0.896256
+## stateTexas                              -0.132710   0.116542  -1.139 0.254887
+## stateUtah                               -0.080457   0.192590  -0.418 0.676141
+## stateVermont                            -0.389866   0.424484  -0.918 0.358441
+## stateVirginia                            0.006958   0.127588   0.055 0.956510
+## stateWashington                         -0.043867   0.124161  -0.353 0.723875
+## stateWest Virginia                      -0.492385   0.234150  -2.103 0.035541
+## stateWisconsin                           0.036291   0.127658   0.284 0.776205
+## stateWyoming                             0.136487   0.428125   0.319 0.749893
+## party_idIndependent                      0.098371   0.018430   5.338 9.95e-08
+## party_idLean Democrat                   -0.370191   0.058416  -6.337 2.60e-10
+## party_idLean Republican                 -0.360094   0.045419  -7.928 2.87e-15
+## party_idRepublican                      -0.167508   0.020187  -8.298  &lt; 2e-16
+## party_idStrong Democrat                  0.010080   0.025606   0.394 0.693850
+## party_idStrong Republican                0.156162   0.020126   7.759 1.08e-14
+## PraiseControl:stateAlaska                0.328552   0.154404   2.128 0.033409
+## PraiseControl:stateArizona               0.284813   0.170414   1.671 0.094742
+## PraiseControl:stateArkansas             -0.276513   0.298476  -0.926 0.354288
+## PraiseControl:stateCalifornia            0.304964   0.153146   1.991 0.046513
+## PraiseControl:stateColorado              0.147977   0.199150   0.743 0.457501
+## PraiseControl:stateConnecticut           0.331226   0.178967   1.851 0.064277
+## PraiseControl:stateDelaware             -0.137114   0.303516  -0.452 0.651473
+## PraiseControl:stateDistrict of Columbia        NA         NA      NA       NA
+## PraiseControl:stateFlorida               0.375358   0.160135   2.344 0.019127
+## PraiseControl:stateGeorgia               0.463353   0.166542   2.782 0.005425
+## PraiseControl:stateHawaii                0.189309   0.253487   0.747 0.455218
+## PraiseControl:stateIdaho                 1.300589   0.284469   4.572 4.98e-06
+## PraiseControl:stateIllinois              0.345740   0.160370   2.156 0.031152
+## PraiseControl:stateIndiana               0.338100   0.154500   2.188 0.028703
+## PraiseControl:stateIowa                  0.352398   0.325371   1.083 0.278845
+## PraiseControl:stateKansas                0.690697   0.334029   2.068 0.038726
+## PraiseControl:stateKentucky              0.491861   0.271903   1.809 0.070533
+## PraiseControl:stateLouisiana             0.353084   0.232702   1.517 0.129265
+## PraiseControl:stateMaine                -0.513539   0.522523  -0.983 0.325764
+## PraiseControl:stateMaryland              0.391952   0.176975   2.215 0.026835
+## PraiseControl:stateMassachusetts         0.405242   0.174193   2.326 0.020048
+## PraiseControl:stateMichigan              0.359678   0.171567   2.096 0.036108
+## PraiseControl:stateMinnesota             0.813885   0.325503   2.500 0.012446
+## PraiseControl:stateMississippi           0.680878   0.291291   2.337 0.019465
+## PraiseControl:stateMissouri              0.374902   0.180218   2.080 0.037566
+## PraiseControl:stateMontana               0.348605   0.372990   0.935 0.350040
+## PraiseControl:stateNebraska                    NA         NA      NA       NA
+## PraiseControl:stateNevada               -0.118374   0.384358  -0.308 0.758115
+## PraiseControl:stateNew Hampshire               NA         NA      NA       NA
+## PraiseControl:stateNew Jersey            0.249109   0.175385   1.420 0.155584
+## PraiseControl:stateNew Mexico            0.275556   0.365702   0.753 0.451195
+## PraiseControl:stateNew York              0.432053   0.164036   2.634 0.008474
+## PraiseControl:stateNorth Carolina        0.339465   0.170310   1.993 0.046306
+## PraiseControl:stateNorth Dakota                NA         NA      NA       NA
+## PraiseControl:stateOhio                  0.385755   0.169414   2.277 0.022840
+## PraiseControl:stateOklahoma              0.181667   0.458800   0.396 0.692155
+## PraiseControl:stateOregon                0.666078   0.258313   2.579 0.009957
+## PraiseControl:statePennsylvania          0.451838   0.168965   2.674 0.007523
+## PraiseControl:statePuerto Rico                 NA         NA      NA       NA
+## PraiseControl:stateRhode Island                NA         NA      NA       NA
+## PraiseControl:stateSouth Carolina        0.280895   0.222068   1.265 0.205979
+## PraiseControl:stateTennessee             0.305939   0.167553   1.826 0.067938
+## PraiseControl:stateTexas                 0.341122   0.153838   2.217 0.026652
+## PraiseControl:stateUtah                  0.044453   0.282714   0.157 0.875066
+## PraiseControl:stateVermont               1.122691   0.599943   1.871 0.061373
+## PraiseControl:stateVirginia              0.420057   0.171237   2.453 0.014207
+## PraiseControl:stateWashington            0.455427   0.168992   2.695 0.007069
+## PraiseControl:stateWest Virginia         0.855018   0.481107   1.777 0.075615
+## PraiseControl:stateWisconsin             0.396079   0.169367   2.339 0.019407
+## PraiseControl:stateWyoming               0.569984   0.599837   0.950 0.342053
+##                                            
+## (Intercept)                             ***
+## PraiseControl                           *  
+## stateAlaska                                
+## stateArizona                               
+## stateArkansas                              
+## stateCalifornia                            
+## stateColorado                              
+## stateConnecticut                        .  
+## stateDelaware                              
+## stateDistrict of Columbia                  
+## stateFlorida                               
+## stateGeorgia                               
+## stateHawaii                                
+## stateIdaho                              ***
+## stateIllinois                              
+## stateIndiana                               
+## stateIowa                                  
+## stateKansas                                
+## stateKentucky                              
+## stateLouisiana                          .  
+## stateMaine                              ***
+## stateMaryland                              
+## stateMassachusetts                         
+## stateMichigan                              
+## stateMinnesota                          ** 
+## stateMississippi                        .  
+## stateMissouri                              
+## stateMontana                               
+## stateNebraska                           ***
+## stateNevada                                
+## stateNew Hampshire                      *  
+## stateNew Jersey                            
+## stateNew Mexico                            
+## stateNew York                              
+## stateNorth Carolina                        
+## stateNorth Dakota                          
+## stateOhio                                  
+## stateOklahoma                              
+## stateOregon                             *  
+## statePennsylvania                          
+## statePuerto Rico                           
+## stateRhode Island                          
+## stateSouth Carolina                        
+## stateTennessee                             
+## stateTexas                                 
+## stateUtah                                  
+## stateVermont                               
+## stateVirginia                              
+## stateWashington                            
+## stateWest Virginia                      *  
+## stateWisconsin                             
+## stateWyoming                               
+## party_idIndependent                     ***
+## party_idLean Democrat                   ***
+## party_idLean Republican                 ***
+## party_idRepublican                      ***
+## party_idStrong Democrat                    
+## party_idStrong Republican               ***
+## PraiseControl:stateAlaska               *  
+## PraiseControl:stateArizona              .  
+## PraiseControl:stateArkansas                
+## PraiseControl:stateCalifornia           *  
+## PraiseControl:stateColorado                
+## PraiseControl:stateConnecticut          .  
+## PraiseControl:stateDelaware                
+## PraiseControl:stateDistrict of Columbia    
+## PraiseControl:stateFlorida              *  
+## PraiseControl:stateGeorgia              ** 
+## PraiseControl:stateHawaii                  
+## PraiseControl:stateIdaho                ***
+## PraiseControl:stateIllinois             *  
+## PraiseControl:stateIndiana              *  
+## PraiseControl:stateIowa                    
+## PraiseControl:stateKansas               *  
+## PraiseControl:stateKentucky             .  
+## PraiseControl:stateLouisiana               
+## PraiseControl:stateMaine                   
+## PraiseControl:stateMaryland             *  
+## PraiseControl:stateMassachusetts        *  
+## PraiseControl:stateMichigan             *  
+## PraiseControl:stateMinnesota            *  
+## PraiseControl:stateMississippi          *  
+## PraiseControl:stateMissouri             *  
+## PraiseControl:stateMontana                 
+## PraiseControl:stateNebraska                
+## PraiseControl:stateNevada                  
+## PraiseControl:stateNew Hampshire           
+## PraiseControl:stateNew Jersey              
+## PraiseControl:stateNew Mexico              
+## PraiseControl:stateNew York             ** 
+## PraiseControl:stateNorth Carolina       *  
+## PraiseControl:stateNorth Dakota            
+## PraiseControl:stateOhio                 *  
+## PraiseControl:stateOklahoma                
+## PraiseControl:stateOregon               ** 
+## PraiseControl:statePennsylvania         ** 
+## PraiseControl:statePuerto Rico             
+## PraiseControl:stateRhode Island            
+## PraiseControl:stateSouth Carolina          
+## PraiseControl:stateTennessee            .  
+## PraiseControl:stateTexas                *  
+## PraiseControl:stateUtah                    
+## PraiseControl:stateVermont              .  
+## PraiseControl:stateVirginia             *  
+## PraiseControl:stateWashington           ** 
+## PraiseControl:stateWest Virginia        .  
+## PraiseControl:stateWisconsin            *  
+## PraiseControl:stateWyoming                 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.4087 on 3945 degrees of freedom
+##   (1034 observations deleted due to missingness)
+## Multiple R-squared:  0.1733, Adjusted R-squared:  0.1522 
+## F-statistic: 8.189 on 101 and 3945 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>check6_4id&lt;-lm(post_attitudinalindex~PraiseControl*state+party_id,data=data1White)
+summary(check6_4id) </code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = post_attitudinalindex ~ PraiseControl * state + 
+##     party_id, data = data1White)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.37022 -0.07975  0.00713  0.08969  0.63630 
+## 
+## Coefficients: (6 not defined because of singularities)
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                              1.573576   0.045222  34.797  &lt; 2e-16
+## PraiseControl                           -0.173279   0.058862  -2.944 0.003261
+## stateAlaska                             -0.187568   0.046417  -4.041 5.42e-05
+## stateArizona                            -0.120950   0.049980  -2.420 0.015566
+## stateArkansas                           -0.199558   0.085017  -2.347 0.018960
+## stateCalifornia                         -0.149045   0.045924  -3.245 0.001182
+## stateColorado                           -0.196519   0.055707  -3.528 0.000424
+## stateConnecticut                        -0.233577   0.052337  -4.463 8.31e-06
+## stateDelaware                           -0.174182   0.079856  -2.181 0.029228
+## stateDistrict of Columbia                0.001559   0.103660   0.015 0.987999
+## stateFlorida                            -0.136114   0.048199  -2.824 0.004767
+## stateGeorgia                            -0.113615   0.049135  -2.312 0.020811
+## stateHawaii                             -0.055624   0.072753  -0.765 0.444581
+## stateIdaho                              -0.422803   0.092589  -4.566 5.11e-06
+## stateIllinois                           -0.084126   0.048132  -1.748 0.080571
+## stateIndiana                            -0.156493   0.046311  -3.379 0.000734
+## stateIowa                               -0.201465   0.079741  -2.526 0.011560
+## stateKansas                             -0.123299   0.103565  -1.191 0.233905
+## stateKentucky                           -0.157072   0.079739  -1.970 0.048927
+## stateLouisiana                          -0.117715   0.066243  -1.777 0.075643
+## stateMaine                              -0.405428   0.122690  -3.305 0.000960
+## stateMaryland                           -0.066310   0.053314  -1.244 0.213665
+## stateMassachusetts                      -0.076982   0.051427  -1.497 0.134496
+## stateMichigan                           -0.086561   0.050144  -1.726 0.084384
+## stateMinnesota                          -0.147837   0.092397  -1.600 0.109675
+## stateMississippi                        -0.087553   0.072687  -1.205 0.228457
+## stateMissouri                           -0.108654   0.052257  -2.079 0.037659
+## stateMontana                            -0.178984   0.085060  -2.104 0.035424
+## stateNebraska                           -0.046548   0.120434  -0.387 0.699144
+## stateNevada                             -0.051137   0.092571  -0.552 0.580697
+## stateNew Hampshire                       0.349102   0.166201   2.100 0.035750
+## stateNew Jersey                         -0.081855   0.051945  -1.576 0.115155
+## stateNew Mexico                         -0.157327   0.122766  -1.282 0.200086
+## stateNew York                           -0.134747   0.048938  -2.753 0.005924
+## stateNorth Carolina                     -0.130382   0.049783  -2.619 0.008853
+## stateNorth Dakota                        0.086813   0.123043   0.706 0.480510
+## stateOhio                               -0.085527   0.049551  -1.726 0.084423
+## stateOklahoma                           -0.105013   0.167666  -0.626 0.531141
+## stateOregon                             -0.297941   0.079809  -3.733 0.000192
+## statePennsylvania                       -0.123988   0.049953  -2.482 0.013102
+## statePuerto Rico                         0.166758   0.120658   1.382 0.167028
+## stateRhode Island                        0.179258   0.120658   1.486 0.137446
+## stateSouth Carolina                     -0.245188   0.067971  -3.607 0.000313
+## stateTennessee                          -0.137014   0.049626  -2.761 0.005791
+## stateTexas                              -0.185164   0.046047  -4.021 5.90e-05
+## stateUtah                               -0.164539   0.076094  -2.162 0.030655
+## stateVermont                            -0.212745   0.167718  -1.268 0.204708
+## stateVirginia                           -0.076346   0.050411  -1.514 0.129988
+## stateWashington                         -0.081530   0.049057  -1.662 0.096604
+## stateWest Virginia                      -0.017283   0.092515  -0.187 0.851818
+## stateWisconsin                          -0.106215   0.050439  -2.106 0.035284
+## stateWyoming                            -0.269883   0.169157  -1.595 0.110690
+## party_idIndependent                     -0.026373   0.007282  -3.622 0.000296
+## party_idLean Democrat                   -0.012027   0.023081  -0.521 0.602346
+## party_idLean Republican                 -0.063280   0.017945  -3.526 0.000426
+## party_idRepublican                      -0.021897   0.007976  -2.745 0.006073
+## party_idStrong Democrat                  0.018934   0.010117   1.871 0.061353
+## party_idStrong Republican               -0.020832   0.007952  -2.620 0.008835
+## PraiseControl:stateAlaska                0.169020   0.061007   2.771 0.005623
+## PraiseControl:stateArizona               0.192863   0.067333   2.864 0.004201
+## PraiseControl:stateArkansas              0.239448   0.117931   2.030 0.042382
+## PraiseControl:stateCalifornia            0.163042   0.060509   2.694 0.007080
+## PraiseControl:stateColorado              0.189051   0.078686   2.403 0.016326
+## PraiseControl:stateConnecticut           0.077021   0.070712   1.089 0.276118
+## PraiseControl:stateDelaware              0.045250   0.119923   0.377 0.705952
+## PraiseControl:stateDistrict of Columbia        NA         NA      NA       NA
+## PraiseControl:stateFlorida               0.192447   0.063271   3.042 0.002369
+## PraiseControl:stateGeorgia               0.135188   0.065803   2.054 0.039997
+## PraiseControl:stateHawaii                0.099951   0.100156   0.998 0.318360
+## PraiseControl:stateIdaho                 0.301813   0.112397   2.685 0.007278
+## PraiseControl:stateIllinois              0.152248   0.063364   2.403 0.016318
+## PraiseControl:stateIndiana               0.195482   0.061045   3.202 0.001374
+## PraiseControl:stateIowa                 -0.007464   0.128558  -0.058 0.953705
+## PraiseControl:stateKansas                0.317189   0.131978   2.403 0.016292
+## PraiseControl:stateKentucky              0.236560   0.107432   2.202 0.027726
+## PraiseControl:stateLouisiana             0.075373   0.091943   0.820 0.412392
+## PraiseControl:stateMaine                -0.244038   0.206455  -1.182 0.237261
+## PraiseControl:stateMaryland              0.147888   0.069925   2.115 0.034496
+## PraiseControl:stateMassachusetts         0.186224   0.068826   2.706 0.006845
+## PraiseControl:stateMichigan              0.153324   0.067788   2.262 0.023764
+## PraiseControl:stateMinnesota             0.278369   0.128610   2.164 0.030490
+## PraiseControl:stateMississippi           0.212104   0.115092   1.843 0.065418
+## PraiseControl:stateMissouri              0.201437   0.071206   2.829 0.004694
+## PraiseControl:stateMontana               0.183801   0.147373   1.247 0.212403
+## PraiseControl:stateNebraska                    NA         NA      NA       NA
+## PraiseControl:stateNevada                0.298037   0.151864   1.963 0.049772
+## PraiseControl:stateNew Hampshire               NA         NA      NA       NA
+## PraiseControl:stateNew Jersey            0.164603   0.069297   2.375 0.017580
+## PraiseControl:stateNew Mexico            0.232742   0.144493   1.611 0.107314
+## PraiseControl:stateNew York              0.192704   0.064812   2.973 0.002964
+## PraiseControl:stateNorth Carolina        0.172204   0.067291   2.559 0.010532
+## PraiseControl:stateNorth Dakota                NA         NA      NA       NA
+## PraiseControl:stateOhio                  0.164650   0.066937   2.460 0.013946
+## PraiseControl:stateOklahoma              0.173760   0.181277   0.959 0.337854
+## PraiseControl:stateOregon                0.318291   0.102062   3.119 0.001830
+## PraiseControl:statePennsylvania          0.189042   0.066760   2.832 0.004654
+## PraiseControl:statePuerto Rico                 NA         NA      NA       NA
+## PraiseControl:stateRhode Island                NA         NA      NA       NA
+## PraiseControl:stateSouth Carolina        0.382275   0.087741   4.357 1.35e-05
+## PraiseControl:stateTennessee             0.178107   0.066202   2.690 0.007168
+## PraiseControl:stateTexas                 0.161844   0.060783   2.663 0.007784
+## PraiseControl:stateUtah                  0.260561   0.111703   2.333 0.019718
+## PraiseControl:stateVermont               0.302807   0.237044   1.277 0.201526
+## PraiseControl:stateVirginia              0.124414   0.067658   1.839 0.066008
+## PraiseControl:stateWashington            0.171076   0.066771   2.562 0.010440
+## PraiseControl:stateWest Virginia         0.178652   0.190091   0.940 0.347365
+## PraiseControl:stateWisconsin             0.202241   0.066919   3.022 0.002526
+## PraiseControl:stateWyoming               0.357083   0.237002   1.507 0.131976
+##                                            
+## (Intercept)                             ***
+## PraiseControl                           ** 
+## stateAlaska                             ***
+## stateArizona                            *  
+## stateArkansas                           *  
+## stateCalifornia                         ** 
+## stateColorado                           ***
+## stateConnecticut                        ***
+## stateDelaware                           *  
+## stateDistrict of Columbia                  
+## stateFlorida                            ** 
+## stateGeorgia                            *  
+## stateHawaii                                
+## stateIdaho                              ***
+## stateIllinois                           .  
+## stateIndiana                            ***
+## stateIowa                               *  
+## stateKansas                                
+## stateKentucky                           *  
+## stateLouisiana                          .  
+## stateMaine                              ***
+## stateMaryland                              
+## stateMassachusetts                         
+## stateMichigan                           .  
+## stateMinnesota                             
+## stateMississippi                           
+## stateMissouri                           *  
+## stateMontana                            *  
+## stateNebraska                              
+## stateNevada                                
+## stateNew Hampshire                      *  
+## stateNew Jersey                            
+## stateNew Mexico                            
+## stateNew York                           ** 
+## stateNorth Carolina                     ** 
+## stateNorth Dakota                          
+## stateOhio                               .  
+## stateOklahoma                              
+## stateOregon                             ***
+## statePennsylvania                       *  
+## statePuerto Rico                           
+## stateRhode Island                          
+## stateSouth Carolina                     ***
+## stateTennessee                          ** 
+## stateTexas                              ***
+## stateUtah                               *  
+## stateVermont                               
+## stateVirginia                              
+## stateWashington                         .  
+## stateWest Virginia                         
+## stateWisconsin                          *  
+## stateWyoming                               
+## party_idIndependent                     ***
+## party_idLean Democrat                      
+## party_idLean Republican                 ***
+## party_idRepublican                      ** 
+## party_idStrong Democrat                 .  
+## party_idStrong Republican               ** 
+## PraiseControl:stateAlaska               ** 
+## PraiseControl:stateArizona              ** 
+## PraiseControl:stateArkansas             *  
+## PraiseControl:stateCalifornia           ** 
+## PraiseControl:stateColorado             *  
+## PraiseControl:stateConnecticut             
+## PraiseControl:stateDelaware                
+## PraiseControl:stateDistrict of Columbia    
+## PraiseControl:stateFlorida              ** 
+## PraiseControl:stateGeorgia              *  
+## PraiseControl:stateHawaii                  
+## PraiseControl:stateIdaho                ** 
+## PraiseControl:stateIllinois             *  
+## PraiseControl:stateIndiana              ** 
+## PraiseControl:stateIowa                    
+## PraiseControl:stateKansas               *  
+## PraiseControl:stateKentucky             *  
+## PraiseControl:stateLouisiana               
+## PraiseControl:stateMaine                   
+## PraiseControl:stateMaryland             *  
+## PraiseControl:stateMassachusetts        ** 
+## PraiseControl:stateMichigan             *  
+## PraiseControl:stateMinnesota            *  
+## PraiseControl:stateMississippi          .  
+## PraiseControl:stateMissouri             ** 
+## PraiseControl:stateMontana                 
+## PraiseControl:stateNebraska                
+## PraiseControl:stateNevada               *  
+## PraiseControl:stateNew Hampshire           
+## PraiseControl:stateNew Jersey           *  
+## PraiseControl:stateNew Mexico              
+## PraiseControl:stateNew York             ** 
+## PraiseControl:stateNorth Carolina       *  
+## PraiseControl:stateNorth Dakota            
+## PraiseControl:stateOhio                 *  
+## PraiseControl:stateOklahoma                
+## PraiseControl:stateOregon               ** 
+## PraiseControl:statePennsylvania         ** 
+## PraiseControl:statePuerto Rico             
+## PraiseControl:stateRhode Island            
+## PraiseControl:stateSouth Carolina       ***
+## PraiseControl:stateTennessee            ** 
+## PraiseControl:stateTexas                ** 
+## PraiseControl:stateUtah                 *  
+## PraiseControl:stateVermont                 
+## PraiseControl:stateVirginia             .  
+## PraiseControl:stateWashington           *  
+## PraiseControl:stateWest Virginia           
+## PraiseControl:stateWisconsin            ** 
+## PraiseControl:stateWyoming                 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1615 on 3945 degrees of freedom
+##   (1034 observations deleted due to missingness)
+## Multiple R-squared:  0.09794,    Adjusted R-squared:  0.07484 
+## F-statistic: 4.241 on 101 and 3945 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>check6_6id&lt;-lm(post_attitudinalindex~PraiseControl*state+party_id,data=data2White)
+summary(check6_6id) </code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = post_attitudinalindex ~ PraiseControl * state + 
+##     party_id, data = data2White)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.36889 -0.08052  0.01029  0.08874  0.57082 
+## 
+## Coefficients: (9 not defined because of singularities)
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                              1.543786   0.050624  30.495  &lt; 2e-16
+## PraiseControl                           -0.133247   0.066764  -1.996 0.046045
+## stateAlaska                             -0.207119   0.051984  -3.984 6.93e-05
+## stateArizona                            -0.087407   0.056695  -1.542 0.123247
+## stateArkansas                           -0.184335   0.093818  -1.965 0.049527
+## stateCalifornia                         -0.140171   0.051373  -2.728 0.006399
+## stateColorado                           -0.286013   0.063250  -4.522 6.36e-06
+## stateConnecticut                        -0.216410   0.057541  -3.761 0.000172
+## stateDelaware                           -0.184040   0.104528  -1.761 0.078395
+## stateDistrict of Columbia               -0.215344   0.104633  -2.058 0.039666
+## stateFlorida                            -0.100605   0.053959  -1.864 0.062353
+## stateGeorgia                            -0.064571   0.055154  -1.171 0.241796
+## stateHawaii                             -0.199167   0.087248  -2.283 0.022513
+## stateIdaho                              -0.622716   0.167962  -3.707 0.000213
+## stateIllinois                           -0.065793   0.053669  -1.226 0.220328
+## stateIndiana                            -0.104039   0.051712  -2.012 0.044318
+## stateIowa                               -0.107765   0.081915  -1.316 0.188416
+## stateKansas                             -0.047246   0.104523  -0.452 0.651290
+## stateKentucky                           -0.039171   0.093862  -0.417 0.676472
+## stateLouisiana                          -0.061093   0.075295  -0.811 0.417205
+## stateMaine                              -0.360844   0.122831  -2.938 0.003331
+## stateMaryland                           -0.062237   0.060286  -1.032 0.301983
+## stateMassachusetts                      -0.065430   0.057845  -1.131 0.258092
+## stateMichigan                           -0.073584   0.056072  -1.312 0.189515
+## stateMinnesota                          -0.406476   0.122933  -3.306 0.000956
+## stateMississippi                        -0.106514   0.078256  -1.361 0.173584
+## stateMissouri                           -0.077804   0.059528  -1.307 0.191310
+## stateMontana                             0.085398   0.104392   0.818 0.413394
+## stateNebraska                           -0.089896   0.120496  -0.746 0.455696
+## stateNevada                             -0.065516   0.122876  -0.533 0.593942
+## stateNew Hampshire                       0.201758   0.164849   1.224 0.221088
+## stateNew Jersey                         -0.041612   0.058121  -0.716 0.474078
+## stateNew Mexico                          0.086840   0.078357   1.108 0.267838
+## stateNew York                           -0.088616   0.054683  -1.621 0.105220
+## stateNorth Carolina                     -0.071575   0.056093  -1.276 0.202053
+## stateNorth Dakota                       -0.246568   0.123293  -2.000 0.045605
+## stateOhio                               -0.085813   0.055469  -1.547 0.121960
+## stateOklahoma                            0.091468   0.166360   0.550 0.582483
+## stateOregon                             -0.053593   0.086933  -0.616 0.537619
+## statePennsylvania                       -0.076064   0.056088  -1.356 0.175148
+## statePuerto Rico                        -0.510821   0.120868  -4.226 2.45e-05
+## stateRhode Island                       -0.208321   0.120868  -1.724 0.084894
+## stateSouth Carolina                     -0.219540   0.075249  -2.918 0.003554
+## stateTennessee                          -0.076746   0.055472  -1.384 0.166611
+## stateTexas                              -0.144990   0.051464  -2.817 0.004874
+## stateUtah                               -0.055323   0.094318  -0.587 0.557543
+## stateVermont                             0.104167   0.166437   0.626 0.531451
+## stateVirginia                           -0.057583   0.056772  -1.014 0.310531
+## stateWashington                         -0.076056   0.054756  -1.389 0.164933
+## stateWest Virginia                      -0.167292   0.094019  -1.779 0.075282
+## stateWisconsin                          -0.079070   0.056818  -1.392 0.164133
+## stateWyoming                             0.080747   0.164622   0.491 0.623815
+## party_idIndependent                     -0.024334   0.008394  -2.899 0.003770
+## party_idLean Democrat                    0.013930   0.023957   0.581 0.560983
+## party_idLean Republican                 -0.138150   0.020427  -6.763 1.61e-11
+## party_idRepublican                      -0.033587   0.009017  -3.725 0.000199
+## party_idStrong Democrat                  0.021037   0.011024   1.908 0.056448
+## party_idStrong Republican               -0.019619   0.008807  -2.228 0.025969
+## PraiseControl:stateAlaska                0.130063   0.069129   1.881 0.060007
+## PraiseControl:stateArizona               0.128982   0.077337   1.668 0.095460
+## PraiseControl:stateArkansas              0.195767   0.130553   1.500 0.133841
+## PraiseControl:stateCalifornia            0.150809   0.068567   2.199 0.027923
+## PraiseControl:stateColorado              0.258874   0.087987   2.942 0.003284
+## PraiseControl:stateConnecticut           0.174712   0.080248   2.177 0.029545
+## PraiseControl:stateDelaware              0.219905   0.145966   1.507 0.132031
+## PraiseControl:stateDistrict of Columbia        NA         NA      NA       NA
+## PraiseControl:stateFlorida               0.128176   0.071687   1.788 0.073876
+## PraiseControl:stateGeorgia               0.085374   0.074603   1.144 0.252559
+## PraiseControl:stateHawaii                0.055185   0.117311   0.470 0.638092
+## PraiseControl:stateIdaho                 0.510512   0.180734   2.825 0.004764
+## PraiseControl:stateIllinois              0.101409   0.071396   1.420 0.155602
+## PraiseControl:stateIndiana               0.144402   0.068949   2.094 0.036314
+## PraiseControl:stateIowa                  0.016104   0.130584   0.123 0.901862
+## PraiseControl:stateKansas                0.058492   0.138484   0.422 0.672782
+## PraiseControl:stateKentucky              0.156119   0.119789   1.303 0.192578
+## PraiseControl:stateLouisiana             0.185507   0.103692   1.789 0.073713
+## PraiseControl:stateMaine                -0.138409   0.205415  -0.674 0.500490
+## PraiseControl:stateMaryland              0.131758   0.080738   1.632 0.102800
+## PraiseControl:stateMassachusetts         0.137650   0.078139   1.762 0.078237
+## PraiseControl:stateMichigan              0.125856   0.076245   1.651 0.098909
+## PraiseControl:stateMinnesota             0.228691   0.172232   1.328 0.184340
+## PraiseControl:stateMississippi           0.128928   0.128209   1.006 0.314686
+## PraiseControl:stateMissouri              0.123417   0.082416   1.497 0.134371
+## PraiseControl:stateMontana              -0.049976   0.159360  -0.314 0.753844
+## PraiseControl:stateNebraska                    NA         NA      NA       NA
+## PraiseControl:stateNevada                      NA         NA      NA       NA
+## PraiseControl:stateNew Hampshire               NA         NA      NA       NA
+## PraiseControl:stateNew Jersey            0.107340   0.078697   1.364 0.172681
+## PraiseControl:stateNew Mexico                  NA         NA      NA       NA
+## PraiseControl:stateNew York              0.131695   0.073360   1.795 0.072726
+## PraiseControl:stateNorth Carolina        0.103518   0.076884   1.346 0.178267
+## PraiseControl:stateNorth Dakota                NA         NA      NA       NA
+## PraiseControl:stateOhio                  0.161604   0.076109   2.123 0.033807
+## PraiseControl:stateOklahoma             -0.051568   0.182379  -0.283 0.777387
+## PraiseControl:stateOregon                0.080173   0.112371   0.713 0.475614
+## PraiseControl:statePennsylvania          0.174710   0.075932   2.301 0.021466
+## PraiseControl:statePuerto Rico                 NA         NA      NA       NA
+## PraiseControl:stateRhode Island                NA         NA      NA       NA
+## PraiseControl:stateSouth Carolina        0.323179   0.099416   3.251 0.001164
+## PraiseControl:stateTennessee             0.139551   0.074868   1.864 0.062423
+## PraiseControl:stateTexas                 0.150129   0.068779   2.183 0.029129
+## PraiseControl:stateUtah                  0.019011   0.130859   0.145 0.884499
+## PraiseControl:stateVermont              -0.583635   0.235241  -2.481 0.013155
+## PraiseControl:stateVirginia              0.112985   0.077599   1.456 0.145489
+## PraiseControl:stateWashington            0.140484   0.075584   1.859 0.063174
+## PraiseControl:stateWest Virginia         0.398420   0.189622   2.101 0.035712
+## PraiseControl:stateWisconsin             0.169210   0.075943   2.228 0.025946
+## PraiseControl:stateWyoming                     NA         NA      NA       NA
+##                                            
+## (Intercept)                             ***
+## PraiseControl                           *  
+## stateAlaska                             ***
+## stateArizona                               
+## stateArkansas                           *  
+## stateCalifornia                         ** 
+## stateColorado                           ***
+## stateConnecticut                        ***
+## stateDelaware                           .  
+## stateDistrict of Columbia               *  
+## stateFlorida                            .  
+## stateGeorgia                               
+## stateHawaii                             *  
+## stateIdaho                              ***
+## stateIllinois                              
+## stateIndiana                            *  
+## stateIowa                                  
+## stateKansas                                
+## stateKentucky                              
+## stateLouisiana                             
+## stateMaine                              ** 
+## stateMaryland                              
+## stateMassachusetts                         
+## stateMichigan                              
+## stateMinnesota                          ***
+## stateMississippi                           
+## stateMissouri                              
+## stateMontana                               
+## stateNebraska                              
+## stateNevada                                
+## stateNew Hampshire                         
+## stateNew Jersey                            
+## stateNew Mexico                            
+## stateNew York                              
+## stateNorth Carolina                        
+## stateNorth Dakota                       *  
+## stateOhio                                  
+## stateOklahoma                              
+## stateOregon                                
+## statePennsylvania                          
+## statePuerto Rico                        ***
+## stateRhode Island                       .  
+## stateSouth Carolina                     ** 
+## stateTennessee                             
+## stateTexas                              ** 
+## stateUtah                                  
+## stateVermont                               
+## stateVirginia                              
+## stateWashington                            
+## stateWest Virginia                      .  
+## stateWisconsin                             
+## stateWyoming                               
+## party_idIndependent                     ** 
+## party_idLean Democrat                      
+## party_idLean Republican                 ***
+## party_idRepublican                      ***
+## party_idStrong Democrat                 .  
+## party_idStrong Republican               *  
+## PraiseControl:stateAlaska               .  
+## PraiseControl:stateArizona              .  
+## PraiseControl:stateArkansas                
+## PraiseControl:stateCalifornia           *  
+## PraiseControl:stateColorado             ** 
+## PraiseControl:stateConnecticut          *  
+## PraiseControl:stateDelaware                
+## PraiseControl:stateDistrict of Columbia    
+## PraiseControl:stateFlorida              .  
+## PraiseControl:stateGeorgia                 
+## PraiseControl:stateHawaii                  
+## PraiseControl:stateIdaho                ** 
+## PraiseControl:stateIllinois                
+## PraiseControl:stateIndiana              *  
+## PraiseControl:stateIowa                    
+## PraiseControl:stateKansas                  
+## PraiseControl:stateKentucky                
+## PraiseControl:stateLouisiana            .  
+## PraiseControl:stateMaine                   
+## PraiseControl:stateMaryland                
+## PraiseControl:stateMassachusetts        .  
+## PraiseControl:stateMichigan             .  
+## PraiseControl:stateMinnesota               
+## PraiseControl:stateMississippi             
+## PraiseControl:stateMissouri                
+## PraiseControl:stateMontana                 
+## PraiseControl:stateNebraska                
+## PraiseControl:stateNevada                  
+## PraiseControl:stateNew Hampshire           
+## PraiseControl:stateNew Jersey              
+## PraiseControl:stateNew Mexico              
+## PraiseControl:stateNew York             .  
+## PraiseControl:stateNorth Carolina          
+## PraiseControl:stateNorth Dakota            
+## PraiseControl:stateOhio                 *  
+## PraiseControl:stateOklahoma                
+## PraiseControl:stateOregon                  
+## PraiseControl:statePennsylvania         *  
+## PraiseControl:statePuerto Rico             
+## PraiseControl:stateRhode Island            
+## PraiseControl:stateSouth Carolina       ** 
+## PraiseControl:stateTennessee            .  
+## PraiseControl:stateTexas                *  
+## PraiseControl:stateUtah                    
+## PraiseControl:stateVermont              *  
+## PraiseControl:stateVirginia                
+## PraiseControl:stateWashington           .  
+## PraiseControl:stateWest Virginia        *  
+## PraiseControl:stateWisconsin            *  
+## PraiseControl:stateWyoming                 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1585 on 3035 degrees of freedom
+##   (813 observations deleted due to missingness)
+## Multiple R-squared:  0.1442, Adjusted R-squared:  0.1165 
+## F-statistic: 5.217 on 98 and 3035 DF,  p-value: &lt; 2.2e-16</code></pre>
 </div>
 </div>
 <div id="did-respondents-engage-in-empathy-more-with-white-faces" class="section level3" number="1.7.4">
@@ -6859,7 +7575,7 @@ stargazer(
 )</code></pre>
 <pre><code>## 
 ## % Table created by stargazer v.5.2.3 by Marek Hlavac, Social Policy Institute. E-mail: marek.hlavac at gmail.com
-## % Date and time: Wed, Dec 24, 2025 - 20:59:07
+## % Date and time: Thu, Dec 25, 2025 - 15:30:40
 ## \begin{table}[!htbp] \centering 
 ##   \caption{H7-H10 models} 
 ##   \label{} 
