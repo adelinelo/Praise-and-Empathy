@@ -1930,22 +1930,28 @@ plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
 plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #keep annotation of text
 #In order, Dem-3-5-Pool, Rep-3-5-Pool, Indep-3-5-Pool 
-N<- c(1455,1214,2669,1890,2703,1140,333,783)
-n<- c(97,408,505,813,400,76,111,141)
+N<- c(1455,1214,2669,1890,813,2703,1140,333,783)
+n<- c(97,408,505,126,274,400,76,111,141)
 
-coefs <- modelsummary$coefficients
-p_exact <- coefs["CoParty_control", "Pr(>|t|)"]   #
+coefs <- c(coef(ate3D)[2],coef(ate5D)[2],coef(atetotD)[2],
+           coef(ate3R)[2],coef(ate5R)[2],coef(atetotR)[2],
+           coef(ate3I)[2],coef(ate5I)[2],coef(atetotI)[2])
+p_exact <- c(summary(ate3D)[2,4],summary(ate5D)[2,4],summary(atetotD)[2,4],
+           summary(ate3R)[2,4],summary(ate5R)[2,4],summary(atetotR)[2,4],
+           summary(ate3I)[2,4],summary(ate5I)[2,4],summary(atetotI)[2,4])
 
-#text for BLM-Full model
+#text to annotate later
 p_txt <- ifelse(p_exact < 1e-3,
                 format(p_exact, scientific = TRUE, digits = 2),
                 formatC(p_exact, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", coefs[i]),
+  " (p = ", p_txt[i], "), N=",N[i],",n=",n[i])
+}
 
-stat_txt_blmattentive <- paste0(
-  "OLS coefficient Co-Partisan Peer Praise:\n ", sprintf("%.3f", coefs[2,1]),
-  " (p = ", p_txt, "), N=",n_model
-)
-
+#set up color-annotate
+vir_col <- viridis(3, option = "D")
 #plot
 plot_data$type<-factor(plot_data$type,levels = c("Democrat","Republican","Independent"))
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
@@ -1956,12 +1962,29 @@ plot_subparty<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
                     position = position_dodge(width = 0.2), fatten = 1.5, size=2, linewidth=2) +
   geom_hline(yintercept=0,color="gray75",linetype="dashed") +
   scale_color_viridis(#alpha=1,
-                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
-                                                                    alpha = 1) )) +
+                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,alpha = 1) )) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.4,0.65) + ggtitle("by Party") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.9, y = 0, label = stat_txt[1], #Dem-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 1.12, y = -0.35, label = stat_txt[2], #Dem-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.2, y = 0, label = stat_txt[3], #Dem-Pool
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +  
+  annotate("text", x = 1.9, y = 0, label = stat_txt[4], #R-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) + 
+  annotate("text", x = 2.12, y = -0.35, label = stat_txt[5], #R-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) + 
+  annotate("text", x = 2.2, y = 0, label = stat_txt[6], #R-Pool
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) + 
+  annotate("text", x = 2.9, y = 0, label = stat_txt[7], #I-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) + 
+  annotate("text", x = 3.12, y = -0.4, label = stat_txt[8], #I-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) + 
+  annotate("text", x = 3.2, y = 0, label = stat_txt[9], #I-Pool
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  
 plot_subparty
 
 
