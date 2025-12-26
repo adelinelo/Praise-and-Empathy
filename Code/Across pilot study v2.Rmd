@@ -2076,7 +2076,7 @@ Create SI Figure B.27:
 ```{r subpresapproveTrump}
 #subset data, run model, store
 long_data3T<-ate3T<-long_datapoolT<-ate5T<-long_data5T<-atetotT<-long_datatotT<-vector("list",7)
-estimate<-se<-matrix(NA,nrow=7,ncol=3) #rows are approval levels, cols are data source
+estimate<-se<-p<-matrix(NA,nrow=7,ncol=3) #rows are approval levels, cols are data source
 study3_Nsize<-study5_Nsize<-pooled_Nsize<-rep(NA,7) #respondent-trial obs
 study3_nsize<-study5_nsize<-pooled_nsize<-rep(NA,7) #respondent obs
 for(i in 1:7){
@@ -2085,6 +2085,7 @@ for(i in 1:7){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,1]<-coef(ate3T[[i]])[2]
   se[i,1]<-summary(ate3T[[i]])[2,2]
+  p[i,1]<-summary(ate3T[[i]])[2,4]
   temp<-subset(long_data3T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study3_Nsize[i]<-dim(temp)[1]
@@ -2095,6 +2096,7 @@ for(i in 1:7){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,2]<-coef(ate5T[[i]])[2]
   se[i,2]<-summary(ate5T[[i]])[2,2]
+  p[i,2]<-summary(ate5T[[i]])[2,4]
   temp<-subset(long_data5T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study5_Nsize[i]<-dim(temp)[1]
@@ -2105,6 +2107,7 @@ for(i in 1:7){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,3]<-coef(atetotT[[i]])[2]
   se[i,3]<-summary(atetotT[[i]])[2,2]
+  p[i,3]<-summary(atetotT[[i]])[2,4]
   temp<-subset(long_datatotT[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   pooled_Nsize[i]<-dim(temp)[1]
@@ -2123,7 +2126,7 @@ tmp_approve_levels<-c("Disapprove extremely strongly","Disapprove moderately str
 plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B", "Pooled"),each=7)
            ,type=rep(tmp_approve_levels,times=3)
            ,estimate=c(estimate) #column unroll
-           ,se=c(se))
+           ,se=c(se),p=c(p))
 plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
 plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
@@ -2131,19 +2134,92 @@ plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #plot
 plot_data$type<-factor(plot_data$type,levels = tmp_approve_levels)
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+#annotations
+  #sort by annotation level:
+plot_data_sorted <- plot_data %>%
+  mutate(
+    # Explicit plot ordering of approval
+    type = factor(
+      type,
+      levels = c(
+        "Disapprove extremely strongly",
+        "Disapprove moderately strongly",
+        "Disapprove slightly",
+        "Neither approve or disapprove",
+        "Approve slightly",
+        "Approve moderately strongly",
+        "Approve extremely strongly"
+      ),
+      ordered = TRUE
+    ),
+    # Explicit plot ordering of study
+    group = factor(
+      group,
+      levels = c("Study 3", "Study 5A & 5B", "Pooled"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(type, group)
+
+p_txt <- ifelse(plot_data_sorted$p < 1e-3,
+                format(plot_data_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", plot_data_sorted$estimate[i]),
+  " (p = ", p_txt[i], ")")
+}
+
 plot_subapproveTrump<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
-  geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
-                    position = position_dodge(width = 0.2), fatten = 1.5, size=0.9,linewidth=0.9) +
-  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group),
-                    position = position_dodge(width = 0.2), fatten = 1.5, size=2,linewidth=2) +
+  geom_pointrange(aes(ymin = lower, ymax = upper, color = group), position = position_dodge(width = 0.2), fatten = 1.5, size=0.9,linewidth=0.9) +
+  geom_pointrange(aes(ymin = lower90, ymax = upper90, color = group), position = position_dodge(width = 0.2), fatten = 1.5, size=2,linewidth=2) +
   geom_hline(yintercept=0,color="gray75",linetype="dashed") +
-  scale_color_viridis(#alpha=1,
-                      begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
-                                                                    alpha = 1) )) +
+  scale_color_viridis(begin=1,end=0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,alpha = 1) )) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.1,1.1) + ggtitle("by Trump approval") +
   coord_flip() + theme_bw() + 
-  theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+  theme(legend.title = element_blank(),axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.8, y = -1, label = stat_txt[1], #7-P
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2)  +
+  annotate("text", x = 1, y = -1, label = stat_txt[2], #7-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2)  +
+  annotate("text", x = 1.2, y = -1, label = stat_txt[3], #7-3
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  +
+  annotate("text", x = 1.8, y = -1, label = stat_txt[4], #6-P
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2)  +
+  annotate("text", x = 2, y = -1, label = stat_txt[5], #6-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2)  +
+  annotate("text", x = 2.2, y = -1, label = stat_txt[6], #6-3
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  +
+  annotate("text", x = 2.8, y = -1, label = stat_txt[7], #5-P
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2)  +
+  annotate("text", x = 3, y = -1, label = stat_txt[8], #5-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2)  +
+  annotate("text", x = 3.2, y = -1, label = stat_txt[9], #5-3
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  +
+  annotate("text", x = 3.8, y = -1, label = stat_txt[10], #4-P
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2)  +
+  annotate("text", x = 4, y = -1, label = stat_txt[11], #4-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2)  +
+  annotate("text", x = 4.2, y = -1, label = stat_txt[12], #4-3
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  +
+  annotate("text", x = 4.8, y = -1, label = stat_txt[13], #3-P
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2)  +
+  annotate("text", x = 5, y = -1, label = stat_txt[14], #3-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2)  +
+  annotate("text", x = 5.2, y = -1, label = stat_txt[15], #3-3
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  +
+  annotate("text", x = 5.8, y = -1, label = stat_txt[16], #2-P
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2)  +
+  annotate("text", x = 6, y = -1, label = stat_txt[17], #2-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2)  +
+  annotate("text", x = 6.2, y = -1, label = stat_txt[18], #2-3
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  +
+  annotate("text", x = 6.8, y = -1, label = stat_txt[19], #1-P
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2)  +
+  annotate("text", x = 7, y = -1, label = stat_txt[20], #1-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2)  +
+  annotate("text", x = 7.2, y = -1, label = stat_txt[21], #1-3
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2)  
 plot_subapproveTrump
 #ate_subapproveTrump.pdf 7x8
 ggsave(file=here::here("Figures","ate_subapproveTrump.pdf"),width=8,height=8)
@@ -2161,7 +2237,7 @@ Create SI Figure B.28:
 ```{r subpresapproveBiden}
 #subset data, run model, store
 ate5T<-long_data5T<-vector("list",7)
-estimate<-se<-matrix(NA,nrow=7,ncol=1) #rows are approval levels, cols are data source
+estimate<-se<-p<-matrix(NA,nrow=7,ncol=1) #rows are approval levels, cols are data source
 study5_Nsize<-pooled_Nsize<-rep(NA,7) #respondent-trial obs
 study5_nsize<-pooled_nsize<-rep(NA,7) #respondent obs
 
@@ -2171,11 +2247,25 @@ for(i in 1:7){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,1]<-coef(ate5T[[i]])[2]
   se[i,1]<-summary(ate5T[[i]])[2,2]
+  p[i,1]<-summary(ate5T[[i]])[2,4]
   temp<-subset(long_data5T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study5_Nsize[i]<-dim(temp)[1]
   study5_nsize[i]<-length(unique(temp$ID))
 }
+
+#text to annotate later
+p_txt <- ifelse(p[,1] < 1e-3,
+                format(p[,1], scientific = TRUE, digits = 2),
+                formatC(p[,1], format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", estimate[i,1]),
+  " (p = ", p_txt[i], ")")
+}
+
+#set up color-annotate
+vir_col <- viridis(3, option = "D")
 ```
 
 ```{r subpresapproveBiden plot}
@@ -2194,6 +2284,8 @@ plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #plot
 plot_data$type<-factor(plot_data$type,levels = tmp_approve_levels)
 plot_data$group<-factor(plot_data$group,levels = c("Study 5A & 5B"))
+
+
 plot_subapproveBiden<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
                     position = position_dodge(width = 0.2), fatten = 1.5, size=0.9, linewidth=0.9) +
@@ -2206,7 +2298,21 @@ plot_subapproveBiden<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.0,1.5) + ggtitle("by Biden approval") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.9, y = 0, label = stat_txt[1], #1
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.9, y = 0, label = stat_txt[2], #2
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 2.9, y = 0, label = stat_txt[3], #3
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 3.9, y = 0, label = stat_txt[4], #4
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 4.9, y = 0, label = stat_txt[5], #5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 5.9, y = 0, label = stat_txt[6], #6
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 6.9, y = 0, label = stat_txt[7], #7
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) 
 plot_subapproveBiden
 #ate_subapproveBiden.pdf 7x7
 ggsave(file=here::here("Figures","ate_subapproveBiden.pdf"),width=8,height=8)
@@ -2232,8 +2338,7 @@ long_data325k<-subset(long_data3,Income=="25k to less than 50k")
 #long_data3less25k<-subset(long_data3,Income=="less than 25k") #no observations for less than 25k
 
 #100k or more
-ate3100k <- miceadds::glm.cluster( data=long_data3100k, formula=describeORfeel ~ PraiseEmpathy,
-               cluster="ID", family=binomial(link="logit"))
+ate3100k <- miceadds::glm.cluster( data=long_data3100k, formula=describeORfeel ~ PraiseEmpathy, cluster="ID", family=binomial(link="logit"))
 summary(ate3100k) 
   #n
 temp<-subset(long_data3100k,select=c("describeORfeel","PraiseEmpathy","ID"))
@@ -2371,21 +2476,19 @@ temp<-subset(long_datapool25k,select=c("describeORfeel","PraiseEmpathy","ID"))
 
 #plot data: 3, 5, pooled 
 plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=4)
-           ,type=rep(c("100k or more", "75k to less than 100k", "50k to less than 75k", "25k to less than 50k"),times=3)
-           
-           ,estimate=c(coef(ate3100k)[2],coef(ate375k)[2],coef(ate350k)[2], coef(ate325k)[2]
-                       ,coef(ate5100k)[2],coef(ate575k)[2],coef(ate550k)[2], coef(ate525k)[2]
-                       ,coef(atepool100k)[2],coef(atepool75k)[2],coef(atepool50k)[2],
-                       coef(atepool25k)[2])
-           
+           ,type=rep(c("100k or more", "75k to less than 100k", "50k to less than 75k", "25k to less than 50k"),times=3),estimate=c(coef(ate3100k)[2],coef(ate375k)[2],coef(ate350k)[2], coef(ate325k)[2],coef(ate5100k)[2],coef(ate575k)[2],coef(ate550k)[2],coef(ate525k)[2],coef(atepool100k)[2],coef(atepool75k)[2],coef(atepool50k)[2],coef(atepool25k)[2])
            ,se=c(summary(ate3100k)[2,2],summary(ate375k)[2,2],
-                 summary(ate350k)[2,2],summary(ate325k)[2,2]
-        
-                 ,summary(ate5100k)[2,2],summary(ate575k)[2,2],
-                 summary(ate550k)[2,2], summary(ate525k)[2,2]
-                 
-                 ,summary(atepool100k)[2,2],summary(atepool75k)[2,2],
-                 summary(atepool50k)[2,2],summary(atepool25k)[2,2] ))
+                 summary(ate350k)[2,2],summary(ate325k)[2,2],
+                 summary(ate5100k)[2,2],summary(ate575k)[2,2],
+                 summary(ate550k)[2,2], summary(ate525k)[2,2],
+                 summary(atepool100k)[2,2],summary(atepool75k)[2,2],
+                 summary(atepool50k)[2,2],summary(atepool25k)[2,2] )
+           ,p=c(summary(ate3100k)[2,4],summary(ate375k)[2,4],
+                 summary(ate350k)[2,4],summary(ate325k)[2,4],
+                 summary(ate5100k)[2,4],summary(ate575k)[2,4],
+                 summary(ate550k)[2,4], summary(ate525k)[2,4],
+                 summary(atepool100k)[2,4],summary(atepool75k)[2,4],
+                 summary(atepool50k)[2,4],summary(atepool25k)[2,4] ))
 
 plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
@@ -2394,6 +2497,43 @@ plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #plot
 plot_data$type<-factor(plot_data$type,levels = c("100k or more", "75k to less than 100k", "50k to less than 75k", "25k to less than 50k"))
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+#annotate, first arrange and then annotate in order
+plot_data_sorted <- plot_data %>%
+  mutate(
+    # Explicit income ordering (highest to lowest)
+    type = factor(
+      type,
+      levels = c(
+        "100k or more",
+        "75k to less than 100k",
+        "50k to less than 75k",
+        "25k to less than 50k"
+      ),
+      ordered = TRUE
+    ),
+    # EExplicit study ordering
+    group = factor(
+      group,
+      levels = c("Study 3", "Study 5A & 5B", "Pooled"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(type, group)
+
+
+#text to annotate later
+p_txt <- ifelse(plot_data_sorted$p < 1e-3,
+                format(plot_data_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", plot_data_sorted$estimate[i]),
+  " (p = ", p_txt[i], ")")
+}
+
+#set up color-annotate
+vir_col <- viridis(3, option = "D")
+
 plot_subincome<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
                     position = position_dodge(width = 0.2), fatten = 1.5, size=0.9,linewidth=0.9) +
@@ -2406,7 +2546,31 @@ plot_subincome<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.6,1.3) + ggtitle("by Income") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.9, y = -0.51, label = stat_txt[1], #1-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 1.1, y = -0.51, label = stat_txt[2], #1-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.3, y = -0.51, label = stat_txt[3], #1-P
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 1.9, y = -0.51, label = stat_txt[4], #2-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 2.1, y = -0.51, label = stat_txt[5], #2-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 2.3, y = -0.51, label = stat_txt[6], #2-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 2.9, y = -0.51, label = stat_txt[7], #3-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 3.1, y = -0.51, label = stat_txt[8], #3-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 3.3, y = -0.51, label = stat_txt[9], #3-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 3.9, y = -0.51, label = stat_txt[10], #4-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 4.1, y = -0.51, label = stat_txt[11], #4-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 4.3, y = -0.51, label = stat_txt[12], #4-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) 
 plot_subincome
 #ate_subincome.pdf 
 ggsave(file=here::here("Figures","ate_subincome.pdf"),width=8,height=8)
@@ -2536,7 +2700,10 @@ plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=3)
                        ,coef(atetotBlack)[2],coef(atetotWhite)[2],coef(atetotOther)[2])
            ,se=c(summary(ate3Black)[2,2],summary(ate3White)[2,2],summary(ate3Other)[2,2]
                  ,summary(ate5Black)[2,2],summary(ate5White)[2,2],summary(ate5Other)[2,2]
-                 ,summary(atetotBlack)[2,2],summary(atetotWhite)[2,2],summary(atetotOther)[2,2]))
+                 ,summary(atetotBlack)[2,2],summary(atetotWhite)[2,2],summary(atetotOther)[2,2])
+           ,p=c(summary(ate3Black)[2,4],summary(ate3White)[2,4],summary(ate3Other)[2,4]
+                 ,summary(ate5Black)[2,4],summary(ate5White)[2,4],summary(ate5Other)[2,4]
+                 ,summary(atetotBlack)[2,4],summary(atetotWhite)[2,4],summary(atetotOther)[2,4]))
 plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
 plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
@@ -2544,6 +2711,40 @@ plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #plot
 plot_data$type<-factor(plot_data$type,levels = c("Black","White","Other"))
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+#annotate, first arrange and then annotate in order
+plot_data_sorted <- plot_data %>%
+  mutate(
+    # Explicit race ordering
+    type = factor(
+      type,
+      levels = c(
+        "Black",
+        "White",
+        "Other"
+      ),
+      ordered = TRUE
+    ),
+    # Explicit study ordering
+    group = factor(
+      group,
+      levels = c("Study 3", "Study 5A & 5B", "Pooled"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(type, group)
+
+
+#text to annotate later
+p_txt <- ifelse(plot_data_sorted$p < 1e-3,
+                format(plot_data_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", plot_data_sorted$estimate[i]),
+  " (p = ", p_txt[i], ")")
+}
+
+
 plot_subrace<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
                     position = position_dodge(width = 0.2), fatten = 1.5, size=0.9,linewidth=0.9) +
@@ -2556,7 +2757,26 @@ plot_subrace<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.6,1.3) + ggtitle("by Race") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.9, y = -0.51, label = stat_txt[1], #b-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 1.1, y = -0.51, label = stat_txt[2], #b-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.3, y = -0.51, label = stat_txt[3], #b-P
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 1.9, y = -0.51, label = stat_txt[4], #w-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 2.1, y = -0.51, label = stat_txt[5], #w-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 2.3, y = -0.51, label = stat_txt[6], #w-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 2.9, y = -0.51, label = stat_txt[7], #o-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 3.1, y = -0.51, label = stat_txt[8], #o-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 3.3, y = -0.51, label = stat_txt[9], #o-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) 
+
 plot_subrace
 #ate_subrace.pdf 
 ggsave(file=here::here("Figures","ate_subrace.pdf"),width=7,height=8)
@@ -2586,7 +2806,7 @@ disagg_educ_levels<- c("Some high school, but did not graduate","High school or 
                 ,"Medical (MD), law (JD) or other doctoral degree (PhD)")
 educ_levels<-c("HS","College","Postgrad")
 long_data3T<-ate3T<-long_datapoolT<-ate5T<-long_data5T<-atetotT<-vector("list",length(educ_levels))
-estimate<-se<-matrix(NA,nrow=length(educ_levels),ncol=3) #rows are approval levels, cols are data source
+estimate<-se<-p<-matrix(NA,nrow=length(educ_levels),ncol=3) #rows are educ levels, cols are data source
 for(i in 1:length(educ_levels)){
   if(educ_levels[i]=="HS"){
   long_data3T[[i]]<-subset(long_data3,Education=="Some high school, but did not graduate"|
@@ -2595,6 +2815,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,1]<-coef(ate3T[[i]])[2]
   se[i,1]<-summary(ate3T[[i]])[2,2]
+  p[i,1]<-summary(ate3T[[i]])[2,4]
   temp<-subset(long_data3T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study3_Nsize[i]<-dim(temp)[1]
@@ -2606,6 +2827,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,2]<-coef(ate5T[[i]])[2]
   se[i,2]<-summary(ate5T[[i]])[2,2]
+  p[i,2]<-summary(ate5T[[i]])[2,4]
   temp<-subset(long_data5T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study5_Nsize[i]<-dim(temp)[1]
@@ -2617,6 +2839,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,3]<-coef(atetotT[[i]])[2]
   se[i,3]<-summary(atetotT[[i]])[2,2]
+  p[i,3]<-summary(atetotT[[i]])[2,4]
   temp<-subset(long_datatotT[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   pooled_Nsize[i]<-dim(temp)[1]
@@ -2629,6 +2852,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,1]<-coef(ate3T[[i]])[2]
   se[i,1]<-summary(ate3T[[i]])[2,2]
+  p[i,1]<-summary(ate3T[[i]])[2,4]
   temp<-subset(long_data3T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study3_Nsize[i]<-dim(temp)[1]
@@ -2640,6 +2864,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,2]<-coef(ate5T[[i]])[2]
   se[i,2]<-summary(ate5T[[i]])[2,2]
+  p[i,2]<-summary(ate5T[[i]])[2,4]
   temp<-subset(long_data5T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study5_Nsize[i]<-dim(temp)[1]
@@ -2651,6 +2876,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,3]<-coef(atetotT[[i]])[2]
   se[i,3]<-summary(atetotT[[i]])[2,2]
+  p[i,3]<-summary(atetotT[[i]])[2,4]
   temp<-subset(long_datatotT[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   pooled_Nsize[i]<-dim(temp)[1]
@@ -2663,6 +2889,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,1]<-coef(ate3T[[i]])[2]
   se[i,1]<-summary(ate3T[[i]])[2,2]
+  p[i,1]<-summary(ate3T[[i]])[2,4]
   temp<-subset(long_data3T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study3_Nsize[i]<-dim(temp)[1]
@@ -2674,6 +2901,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,2]<-coef(ate5T[[i]])[2]
   se[i,2]<-summary(ate5T[[i]])[2,2]
+  p[i,2]<-summary(ate5T[[i]])[2,4]
   temp<-subset(long_data5T[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   study5_Nsize[i]<-dim(temp)[1]
@@ -2685,6 +2913,7 @@ for(i in 1:length(educ_levels)){
                ,formula=describeORfeel ~ PraiseEmpathy,cluster="ID", family=binomial(link="logit"))
   estimate[i,3]<-coef(atetotT[[i]])[2]
   se[i,3]<-summary(atetotT[[i]])[2,2]    
+  p[i,3]<-summary(atetotT[[i]])[2,4]   
   temp<-subset(long_datatotT[[i]],select=c("describeORfeel","PraiseEmpathy","ID"))
   temp<-temp[complete.cases(temp),]
   pooled_Nsize[i]<-dim(temp)[1]
@@ -2700,7 +2929,8 @@ for(i in 1:length(educ_levels)){
 plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B", "Pooled"),each=length(educ_levels))
            ,type=rep(educ_levels,times=3)
            ,estimate=c(estimate) #column unroll
-           ,se=c(se))
+           ,se=c(se)
+           ,p=c(p))
 plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
 plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
@@ -2708,6 +2938,40 @@ plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #plot
 plot_data$type<-factor(plot_data$type,levels = educ_levels)
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+#annotate, first arrange and then annotate in order
+plot_data_sorted <- plot_data %>%
+  mutate(
+    # Explicit race ordering
+    type = factor(
+      type,
+      levels = c(
+        "HS",
+        "College",
+        "Postgrad"
+      ),
+      ordered = TRUE
+    ),
+    # Explicit study ordering
+    group = factor(
+      group,
+      levels = c("Study 3", "Study 5A & 5B", "Pooled"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(type, group)
+
+
+#text to annotate later
+p_txt <- ifelse(plot_data_sorted$p < 1e-3,
+                format(plot_data_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", plot_data_sorted$estimate[i]),
+  " (p = ", p_txt[i], ")")
+}
+
+
 plot_subeduc<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
                     position = position_dodge(width = 0.2), fatten = 1.5, size=0.9, linewidth=0.9) +
@@ -2720,7 +2984,25 @@ plot_subeduc<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.1,1.1) + ggtitle("by Education") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.9, y = -0.51, label = stat_txt[1], #hs-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 1.1, y = -0.51, label = stat_txt[2], #hs-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.3, y = -0.51, label = stat_txt[3], #hs-P
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 1.9, y = -0.51, label = stat_txt[4], #c-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 2.1, y = -0.51, label = stat_txt[5], #c-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 2.3, y = -0.51, label = stat_txt[6], #c-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 2.9, y = -0.51, label = stat_txt[7], #p-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 3.1, y = -0.51, label = stat_txt[8], #p-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 3.3, y = -0.51, label = stat_txt[9], #p-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) 
 plot_subeduc
 #ate_subeduc.pdf 6x6
 
@@ -2802,7 +3084,10 @@ plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=2)
                        ,coef(atetotF)[2],coef(atetotM)[2])
            ,se=c(summary(ate3F)[2,2],summary(ate3M)[2,2]
                  ,summary(ate5F)[2,2],summary(ate5M)[2,2]
-                 ,summary(atetotF)[2,2],summary(atetotM)[2,2]))
+                 ,summary(atetotF)[2,2],summary(atetotM)[2,2])
+           ,p=c(summary(ate3F)[2,4],summary(ate3M)[2,4]
+                 ,summary(ate5F)[2,4],summary(ate5M)[2,4]
+                 ,summary(atetotF)[2,4],summary(atetotM)[2,4]))
 plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
 plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
@@ -2810,6 +3095,39 @@ plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #plot
 plot_data$type<-factor(plot_data$type,levels = c("Female","Male"))
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+#annotate, first arrange and then annotate in order
+plot_data_sorted <- plot_data %>%
+  mutate(
+    # Explicit sex ordering
+    type = factor(
+      type,
+      levels = c(
+        "Female",
+        "Male"
+      ),
+      ordered = TRUE
+    ),
+    # Explicit study ordering
+    group = factor(
+      group,
+      levels = c("Study 3", "Study 5A & 5B", "Pooled"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(type, group)
+
+
+#text to annotate later
+p_txt <- ifelse(plot_data_sorted$p < 1e-3,
+                format(plot_data_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", plot_data_sorted$estimate[i]),
+  " (p = ", p_txt[i], ")")
+}
+
+
 plot_subsex<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
                     position = position_dodge(width = 0.2), fatten = 1.5, size=0.9, linewidth=0.9) +
@@ -2819,10 +3137,23 @@ plot_subsex<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   scale_color_viridis(#alpha=1,
                       begin=1,end=0.0,discrete=T,option="D",guide = guide_legend(override.aes = list(size = 0.75,
                                                                     alpha = 1) )) +
-  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.2,0.8) + ggtitle("by Sex") +
+  xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.3,0.8) + ggtitle("by Sex") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.9, y = -0.2, label = stat_txt[1], #hs-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 1.1, y = -0.2, label = stat_txt[2], #hs-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.3, y = -0.2, label = stat_txt[3], #hs-P
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 1.9, y = -0.2, label = stat_txt[4], #c-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 2.1, y = -0.2, label = stat_txt[5], #c-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 2.3, y = -0.2, label = stat_txt[6], #c-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) 
+
 plot_subsex
 #ate_subsex.pdf 
 
@@ -2934,7 +3265,10 @@ plot_data<-data.frame(group=rep(c("Study 3","Study 5A & 5B","Pooled"),each=3)
                        ,coef(atetotlowemp)[2],coef(atetotmedemp)[2],coef(atetothighemp)[2])
            ,se=c(summary(ate3lowemp)[2,2],summary(ate3medemp)[2,2],summary(ate3highemp)[2,2]
                  ,summary(ate5lowemp)[2,2],summary(ate5medemp)[2,2],summary(ate5highemp)[2,2]
-                 ,summary(atetotlowemp)[2,2],summary(atetotmedemp)[2,2],summary(atetothighemp)[2,2]))
+                 ,summary(atetotlowemp)[2,2],summary(atetotmedemp)[2,2],summary(atetothighemp)[2,2])
+           ,p=c(summary(ate3lowemp)[2,4],summary(ate3medemp)[2,4],summary(ate3highemp)[2,4]
+                 ,summary(ate5lowemp)[2,4],summary(ate5medemp)[2,4],summary(ate5highemp)[2,4]
+                 ,summary(atetotlowemp)[2,4],summary(atetotmedemp)[2,4],summary(atetothighemp)[2,4]))
 plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
 plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
@@ -2942,6 +3276,37 @@ plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
 #plot
 plot_data$type<-factor(plot_data$type,levels = c("Low","Medium","High"))
 plot_data$group<-factor(plot_data$group,levels = c("Study 3","Study 5A & 5B","Pooled"))
+#annotate, first arrange and then annotate in order
+plot_data_sorted <- plot_data %>%
+  mutate(
+    # Explicit baseline empathy ordering
+    type = factor(
+      type,
+      levels = c(
+        "Low",
+        "Medium",
+        "High"
+      ),
+      ordered = TRUE
+    ),
+    # Explicit study ordering
+    group = factor(
+      group,
+      levels = c("Study 3", "Study 5A & 5B", "Pooled"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(type, group)
+#text to annotate later
+p_txt <- ifelse(plot_data_sorted$p < 1e-3,
+                format(plot_data_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", plot_data_sorted$estimate[i]),
+  " (p = ", p_txt[i], ")")
+}
+
 plot_subbaseempathy<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
                     position = position_dodge(width = 0.2), fatten = 1.5, size=0.9,linewidth=0.9) +
@@ -2954,7 +3319,27 @@ plot_subbaseempathy<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-0.3,0.8) + ggtitle("by baseline empathy battery") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold"))  +
+  annotate("text", x = 0.9, y = -0.2, label = stat_txt[1], #l-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 1.1, y = -0.2, label = stat_txt[2], #l-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.3, y = -0.2, label = stat_txt[3], #l-P
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 1.9, y = -0.2, label = stat_txt[4], #m-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 2.1, y = -0.2, label = stat_txt[5], #m-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 2.3, y = -0.2, label = stat_txt[6], #m-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 2.9, y = -0.2, label = stat_txt[7], #h-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 3.1, y = -0.2, label = stat_txt[8], #h-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 3.3, y = -0.2, label = stat_txt[9], #h-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) 
+
+
 plot_subbaseempathy
 #ate_subbaseempathy.pdf
 
@@ -3073,14 +3458,50 @@ plot_data<-data.frame(group=rep(c("Study 5A","Study 5B","Pooled"),each=3)
                        ,coef(ate_attentivepool)[2],coef(ate_halfattentivepool)[2],coef(ate_unattentivepool)[2])
            ,se=c(summary(ate_attentive5)[2,2],summary(ate_halfattentive5)[2,2],summary(ate_unattentive5)[2,2]
                  ,summary(ate_attentive6)[2,2],summary(ate_halfattentive6)[2,2],summary(ate_unattentive6)[2,2]
-                 ,summary(ate_attentivepool)[2,2],summary(ate_halfattentivepool)[2,2],summary(ate_unattentivepool)[2,2]))
+                 ,summary(ate_attentivepool)[2,2],summary(ate_halfattentivepool)[2,2],summary(ate_unattentivepool)[2,2])
+           ,p=c(summary(ate_attentive5)[2,4],summary(ate_halfattentive5)[2,4],summary(ate_unattentive5)[2,4]
+                 ,summary(ate_attentive6)[2,4],summary(ate_halfattentive6)[2,4],summary(ate_unattentive6)[2,4]
+                 ,summary(ate_attentivepool)[2,4],summary(ate_halfattentivepool)[2,4],summary(ate_unattentivepool)[2,4]))
 plot_data$lower=plot_data$estimate-qnorm(0.975)*plot_data$se
 plot_data$upper=plot_data$estimate+qnorm(0.975)*plot_data$se
 plot_data$lower90=plot_data$estimate-qnorm(0.95)*plot_data$se
 plot_data$upper90=plot_data$estimate+qnorm(0.95)*plot_data$se
-#plot
+#arrange factors
 plot_data$type<-factor(plot_data$type,levels = c("Inattentive","Somewhat Attentive","Attentive"))
 plot_data$group<-factor(plot_data$group,levels = c("Study 5A","Study 5B","Pooled"))
+#annotate, first arrange and then annotate in order
+plot_data_sorted <- plot_data %>%
+  mutate(
+    # Explicit baseline empathy ordering
+    type = factor(
+      type,
+      levels = c(
+        "Inattentive",
+        "Somewhat Attentive",
+        "Attentive"
+      ),
+      ordered = TRUE
+    ),
+    # Explicit study ordering
+    group = factor(
+      group,
+      levels = c("Study 5A", "Study 5B", "Pooled"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(type, group)
+#text to annotate later
+p_txt <- ifelse(plot_data_sorted$p < 1e-3,
+                format(plot_data_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Coef Peer Praise:\n ", sprintf("%.3f", plot_data_sorted$estimate[i]),
+  " (p = ", p_txt[i], ")")
+}
+
+
+#plot
 plot_subattentive<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = group),
                     position = position_dodge(width = 0.2), fatten = 1.5, size=0.9, linewidth=0.9) +
@@ -3093,7 +3514,26 @@ plot_subattentive<-ggplot(plot_data,aes(y=estimate,x=type,group=group)) +
   xlab("") + ylab("Subgroup treatment effect estimate") + ylim(-1.5,1.25) + ggtitle("by Attentiveness") +
   coord_flip() + theme_bw() + 
   theme(legend.title = element_blank()
-        ,axis.text.y=element_text(size=12,face="bold"))
+        ,axis.text.y=element_text(size=12,face="bold")) +
+  annotate("text", x = 0.9, y = -1, label = stat_txt[1], #l-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 1.1, y = -1, label = stat_txt[2], #l-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 1.3, y = -1, label = stat_txt[3], #l-P
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 1.9, y = -1, label = stat_txt[4], #m-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 2.1, y = -1, label = stat_txt[5], #m-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 2.3, y = -1, label = stat_txt[6], #m-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) +
+  annotate("text", x = 2.9, y = -1, label = stat_txt[7], #h-3
+    hjust = 0, vjust = 1, color = vir_col[3], size = 2) +
+  annotate("text", x = 3.1, y = -1, label = stat_txt[8], #h-5
+    hjust = 0, vjust = 1, color = vir_col[2], size = 2) +
+  annotate("text", x = 3.3, y = -1, label = stat_txt[9], #h-p
+    hjust = 0, vjust = 1, color = vir_col[1], size = 2) 
+
 plot_subattentive
 #ate_subattentive.pdf 6x7
 
@@ -3123,8 +3563,8 @@ In all models, `describeORfeel` is regressed over `PraiseEmpathy`, estimating th
 ```{r, eval=FALSE}
 plot_data <-data.frame(Trial=factor(paste("Trial",1:20, sep=" "),levels = paste("Trial",1:20, sep=" "))
                        ,Estimate=NA,Low=NA,High=NA
-                       ,ACME=NA,ACME_low=NA,ACME_high=NA
-                       ,TE=NA,TE_low=NA,TE_high=NA,N=NA)
+                       ,ACME=NA,ACME_p=NA,ACME_low=NA,ACME_high=NA
+                       ,TE=NA,TE_p=NA,TE_low=NA,TE_high=NA,N=NA)
 for(i in 1:length(unique(long_data5$trial_no))){
   print(i)
   tmp_trial <- unique(long_data5$trial_no)[i]
@@ -3138,9 +3578,11 @@ for(i in 1:length(unique(long_data5$trial_no))){
                               , boot=F, conf.level=.95, sims=1000,cluster=tmp_data$ID)
   summ<-summary(mediation_happy)
   plot_data$ACME[i]<-summ$d.avg
+  plot_data$ACME_p[i]<-summ$d.avg.p
   plot_data$ACME_low[i]<-summ$d.avg.ci[1]
   plot_data$ACME_high[i]<-summ$d.avg.ci[2]
   plot_data$TE[i]<-summ$tau.coef
+  plot_data$TE_p[i]<-summ$tau.p
   plot_data$TE_low[i]<-summ$tau.ci[1]
   plot_data$TE_high[i]<-summ$tau.ci[2]
 }
@@ -3149,6 +3591,7 @@ plot_data_long<-data.frame(Trial=rep(plot_data$Trial,2)
                            ,Estimand=as.factor(c(rep("ACME",20),rep("TE",20)))
                            #,EstimandColor=c(rep('firebrick3',20),rep('darkblue',20))
                            ,Estimate=c(plot_data$ACME,plot_data$TE)
+                           ,p=c(plot_data$ACME_p,plot_data$TE_p)
                            ,Low=c(plot_data$ACME_low,plot_data$TE_low)
                            ,High=c(plot_data$ACME_high,plot_data$TE_high))
 saveRDS(plot_data,file=here::here("5a_cumplot_data.rds"))
@@ -3159,13 +3602,41 @@ saveRDS(plot_data_long,file=here::here("5a_cumplot_data_long.rds"))
 plot_data_long<-readRDS(file=here::here("5a_cumplot_data_long.rds"))
 estimand.colors <- c(ACME = "firebrick3", TE = "darkblue")
 
+#annotate, first arrange and then annotate in order
+plot_data_long_sorted <- plot_data_long %>%
+  mutate(
+    # Extract numeric trial index
+    trial_num = as.integer(str_extract(Trial, "\\d+")),
+    
+    # Explicitly order Estimand
+    Estimand = factor(
+      Estimand,
+      levels = c("ACME", "TE"),
+      ordered = TRUE
+    )
+  ) %>%
+  arrange(trial_num, Estimand)
+
+#text to annotate later
+p_txt <- ifelse(plot_data_long_sorted$p < 1e-3,
+                format(plot_data_long_sorted$p, scientific = TRUE, digits = 2),
+                formatC(plot_data_long_sorted$p, format = "f", digits = 4))
+stat_txt<-rep(NA,length(p_txt))
+for(i in 1:length(p_txt)){
+  stat_txt[i]<- paste0("Est: ", sprintf("%.3f", plot_data_long_sorted$Estimate[i]),
+  "\n(p = ", p_txt[i], ")")
+}
+
+
+x_loc<-seq(0.5,by=1,length.out=20)
+
  ggplot(plot_data_long,aes(x=Trial, y=Estimate)) +
    geom_pointrange(aes(ymin = Low, ymax = High, color=Estimand),
                   position = position_dodge(width = 0.4)) +
    geom_hline(yintercept = 0, color = "gray50", linetype = 2, size = 0.2) +
    scale_color_manual(values=estimand.colors) +
    labs(x = "Cumulative trials",
-       y = "Estimated Effect Size") +
+       y = "Estimated Effect Size") + ylim(-0.1,0.2) +
   theme(text = element_text(size = 10, family = "Times"),
         legend.key=element_blank(),
         panel.grid.major = element_blank(), 
@@ -3173,11 +3644,109 @@ estimand.colors <- c(ACME = "firebrick3", TE = "darkblue")
         plot.caption = element_text(size = 10, family = "Times",hjust = -.02),
         panel.grid.minor = element_blank(),
         panel.background = element_blank(), 
-        axis.line = element_line(colour = "black"))
- 
+        axis.line = element_line(colour = "black")) +
+  annotate("text", x = x_loc[1], y = -0.1, label = stat_txt[1], #1-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[1]+0.1, y = -0.09, label = stat_txt[2], #1-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[2]+0.1, y = 0.15, label = stat_txt[3], #2-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[2]+0.1, y = 0.16, label = stat_txt[4], #2-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[3], y = -0.1, label = stat_txt[5], #3-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[3]+0.1, y = -0.09, label = stat_txt[6], #3-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[4], y = 0.15, label = stat_txt[7], #4-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[4]+0.1, y = 0.16, label = stat_txt[8], #4-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[5], y = -0.1, label = stat_txt[9], #5-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[5]+0.1, y = -0.09, label = stat_txt[10], #5-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[6], y = 0.15, label = stat_txt[11], #6-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[6]+0.1, y = 0.16, label = stat_txt[12], #6-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+
+  annotate("text", x = x_loc[7], y = -0.1, label = stat_txt[13], #7-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[7]+0.1, y = -0.09, label = stat_txt[14], #7-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[8], y = 0.15, label = stat_txt[15], #8-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[8]+0.1, y = 0.16, label = stat_txt[16], #8-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[9], y = -0.1, label = stat_txt[17], #9-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[9]+0.1, y = -0.09, label = stat_txt[18], #9-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[10], y = 0.15, label = stat_txt[19], #10-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[10]+0.1, y = 0.16, label = stat_txt[20], #10-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+
+  annotate("text", x = x_loc[11], y = -0.1, label = stat_txt[21], #11-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[11]+0.1, y = -0.09, label = stat_txt[22], #11-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[12], y = 0.15, label = stat_txt[23], #12-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[12]+0.1, y = 0.16, label = stat_txt[24], #12-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[13], y = -0.1, label = stat_txt[25], #13-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[13]+0.1, y = -0.09, label = stat_txt[26], #13-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[14], y = 0.15, label = stat_txt[27], #14-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[14]+0.1, y = 0.16, label = stat_txt[28], #14-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[15], y = -0.1, label = stat_txt[29], #15-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[15]+0.1, y = -0.09, label = stat_txt[30], #15-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[16], y = 0.15, label = stat_txt[31], #16-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[16]+0.1, y = 0.16, label = stat_txt[32], #16-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[17], y = -0.1, label = stat_txt[33], #17-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[17]+0.1, y = -0.09, label = stat_txt[34], #17-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[18], y = 0.15, label = stat_txt[35], #18-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[18]+0.1, y = 0.16, label = stat_txt[36], #18-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[19], y = -0.1, label = stat_txt[37], #19-a
+    hjust = 0, vjust = 0.9, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[19]+0.1, y = -0.09, label = stat_txt[38], #19-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) +
+   
+  annotate("text", x = x_loc[20], y = 0.15, label = stat_txt[39], #20-a
+    hjust = 0, vjust = 1, color = "firebrick3", size = 2) +
+  annotate("text", x = x_loc[20]+0.1, y = 0.16, label = stat_txt[40], #20-t
+    hjust = 0, vjust = 1, color = "darkblue", size = 2) 
 #cum_acme_te.pdf 
  
-ggsave(file=here::here("Figures","cum_acme_te.pdf"),width=10,height=8)
+ggsave(file=here::here("Figures","cum_acme_te.pdf"),width=11,height=8)
 #n sizes in plot_data object
  #Caption: {\bf Mediation analyses estimated average causal marginal effects (ACME) and total effects (TE) for peer praise on empathy (through happiness) over successive main task trials in Pilot 5a.} Models follow the linear regression-based approach in \cite{imai_identification_2010} and use the R package \texttt{mediation}. The following are N sizes for each of the models for each (cumulative) trial: (287, 574, 858, 1141, 1422, 1704, 1986, 2264, 2541, 2820, 3097, 3375, 3653, 3932, 4211, 4488, 4766, 5042, 5319, 5597). Points plotted at the center of bands are estimates of ACME and TE, while bands are 95\% confidence intervals.
 ```
