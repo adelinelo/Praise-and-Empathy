@@ -1,0 +1,499 @@
+---
+title: "Power calculations Registered Report"
+author: ""
+date: 'This version: December 2024'
+output: 
+  pdf_document: 
+    pandoc_args: ["--lua-filter=color-text.lua"]
+    keep_tex: true
+  html_document: 
+    code_folding: hide
+    pandoc_args: ["--lua-filter=color-text.lua"]
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: united
+header-includes:
+editor_options:
+  chunk_output_type: console
+---
+<style>
+
+table, td, th {
+  border: none;
+  padding-left: 1em;
+  padding-right: 1em;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+</style>
+
+```{cat, engine.opts = list(file = "color-text.lua")}
+Span = function(span)
+  color = span.attributes['color']
+  -- if no color attribute, return unchange
+  if color == nil then return span end
+  
+  -- tranform to <span style="color: red;"></span>
+  if FORMAT:match 'html' then
+    -- remove color attributes
+    span.attributes['color'] = nil
+    -- use style attribute instead
+    span.attributes['style'] = 'color: ' .. color .. ';'
+    -- return full span element
+    return span
+  elseif FORMAT:match 'latex' then
+    -- remove color attributes
+    span.attributes['color'] = nil
+    -- encapsulate in latex code
+    table.insert(
+      span.content, 1,
+      pandoc.RawInline('latex', '\\textcolor{'..color..'}{')
+    )
+    table.insert(
+      span.content,
+      pandoc.RawInline('latex', '}')
+    )
+    -- returns only span content
+    return span.content
+  else
+    -- for other format return unchanged
+    return span
+  end
+end
+```
+
+```{r setup, results='hide', eval=T, message=F, warning=F}
+rm(list=ls())
+pacman::p_load(here,Hmisc,dplyr,gridExtra,grid,stargazer,hrbrthemes,quanteda,readtext
+               ,tidyverse,knitr,papeR,tidyr,kableExtra,ggpubr,printr,tab,lfe,sjPlot
+               ,clusterSEs,BBmisc,miceadds,mediation,estimatr,sensemakr,SentimentAnalysis
+               ,ggplot2,ggridges,viridis,randomizr,doParallel,sandwich,ggplot2,reshape2
+               ,kableExtra,ggpattern)
+scale_values <- function(x){(x-min(x))/(max(x)-min(x))}
+```
+
+
+# Peer Praise Study
+
+Here we conduct power calculations for the effects of **Peer Praise**. We restrict respondents to White Americans. For the Behavioral Empathy Task, the target (face) is an outgroup member.
+
+Main Study is about 1) Effect of Peer Praise, 2) Long-term Effect of Peer Praise.
+
+1.1) Is Peer Praise able to change respondent inclusion to racial/ethnic outgroups? 
+
+* **H1 DV Behavioral Empathy Task**: the effect of the treatment (praise) on the behavioral empathy task (choosing the FEEL task), when target is an outgroup member.
+
+* **H2 DV Self-reported Empathy**:  the effect of treatment (praise) on the outcome (reporting feeling empathy for racial/ethnic outgroups), when target is an outgroup member.
+
+* **H3 DV Political Inclusion**: the effect of treatment (praise) on the political inclusion index (donate bonus amount + writing letter, equally weighted in Index of 0-2), when target is an outgroup member.
+
+* **H4 DV Attitudes**: the effect of treatment (praise) on the attitudinal index outcome (social distance + thermometer rating, equally weighted into an Index of 0-2), when target is an outgroup member.
+
+1.2) Does the effect of Peer Praise exist over longer periods? (We follow up a week later -- in Wave 2 -- for those who were assigned Peer Praise or Control in Wave 1)
+
+* **H5 DV Behavioral Empathy Task**: the long-run  effect of the treatment (praise) on the behavioral empathy task (choosing the FEEL task), when target is an outgroup member.
+
+* **H6 DV Attitudes**:  the long-run effect of treatment (praise) on the attitudinal index outcome (social distance + thermometer rating, equally weighted into an Index of 0-2), when target is an outgroup member.
+
+##  Assumptions
+
+Power calculations require two main inputs: estimates of effects sizes and standard deviations. We detail here where our priors for those parameters come from. Whenever possible, we use information from our extensive series of pilots for these values or on studies that are as similar to ours as possible along key dimensions (for example, in using the same dependent measure). 
+
+Here we make several key assumptions for our simulations: 1) effect sizes for peer praise on the six outcome DVs for outgroup members, 2) their standard deviations. For each of the long-run effects of peer praise we look at Broockman & Kalla (2016) and (2020) findings which saw a reduction in 50% of the effect within the months follow-up period. Conservatively we thus assume a reduction of 25% of the effect in the shorter follow-up period of one week later.
+
+\begin{enumerate}
+\item For H1, we take effect and SD information from Pilot Study 6, which similarly utilized peer praise on the behavioral choice outcome (0.17, SD=0.47). 
+\item For H2 self reported empathy, as we do not have a piloted peer praise study to directly look for effect sizes, we look at findings from Williamson et al. 2021, which had a similar self-reported empathy outcome but utilized a family history perspective as its intervention (0.171, SD=1).
+\item For H3 we use two semi-behavioral outcomes and index them into one political inclusion index. First, for Donation, we use the same study, from Williamson et al. 2021, and borrow from their outcome of expressed support for more open policies (0.1, SD=0.06). For Letter we look at a similar tested outcome from Adida Lo Platas 2018 ---a letter to the White House---and utilize the same treatment effect sizes and sds (0.165, SD=0.8). We combine Donation and Letter into a single Political Inclusion Index whereby Donation and Letter take on equal weight and the Index ranges from [0,2].
+\item For H4 we use two attitudinal measures and index them into one attitudinal outcome index. First, for Social Distance, we do not have an equivalent study to lean on for priors on effect sizes, so we assume a conservative increment of 0.1 rank move (in a 0-6 rank scale) with a similar sized sd (0.25, SD=0.1). For Thermometer, we also turn to similar tested outcomes from Williamson et al 2021 --- a thermometer towards an outgroup (though in this case refugees) and use the same treatment effect size and sd (2.4, SD=0.08). We combine Social Distance and Thermometer into a single Attitudinal Outcome Index whereby Social Distance and Thermometer take on equal weight and the Index ranges from [0,2].
+\end{enumerate}
+
+Calculations below also incorporate wages and time taken. For wages, we use the highest min wage in 2022 (California) $15/hr.
+
+
+H5 and H6 are for the peer effects in the long-run on Behavioral Empathy Task and Attitudinal Index. We assume long-run effects are reduced by a *quarter*. Finally we keep track of our 6 hypotheses in this peer praise on outgroup section for MH adjustments later.
+
+
+```{r study1assumptions, eval=TRUE}
+set.seed(123)
+# n sizes we simulate through
+possible.ns <- c(seq(from=4000, to=6000, by=100))
+scenarios<-data.frame(N=possible.ns)
+# we calculate time to take study and pay
+scenarios$time<-8
+scenarios$pay<-(((scenarios$time/60)*15)+1)*scenarios$N 
+# alpha level, sims set, number of hypotheses to adjust
+alpha <- 0.05
+sims <- 10000
+n.hyp = 6
+
+# Population assumptions for respondents 
+# based on prior proportions in pilots
+  #proportion of White, proportion of Black in sample
+  #mean(c(61.3,70.4,54.9,70, 64.5,72.9)) White
+  prop_white<-66
+  #mean(c(10.4,13,14.6,13,22.2,15.4))
+  prop_black<-15
+
+# Effects: treatment main effects for each of H1-H4 (H5-H6 halved)
+  sds<-rep(NA,6)
+  #H1: effect and sd information from Pilot Study 6
+  beta1=0.17 
+  sds[1]=0.47
+  #H2: effect and sd from Williamson et al. 2021, which had a 
+    #similar self-reported empathy outcome
+  beta2=0.171 #H2
+  sds[2]=1
+  #H3: Donation - 0.1 effect and 0.06 sd from Williamson et al. 2021, and borrow from 
+    #their outcome of expressed support for more open policies.
+    # Letter - 0.165 effect and 0.02 se from similar tested outcome 
+    # from Adida Lo Platas 2018---a letter to the White House
+  beta3=0.1 #Donation
+  sds[3]=0.06
+  beta4=0.142 #Letter
+  sds[4]=.02*sqrt(1800)
+  #H4: Social distance scores we do not have an equivalent study
+    #to lean on for priors on effect sizes, so we assume an 
+    #increment of 0.25 rank move (on DV value up to 6) with a sd=0.1.
+    # Thermometer - effect and sd from similar tested outcomes from 
+    #Williamson et al 2021 -- a thermometer towards an 
+    #outgroup (though in this case refugees) and use the same 
+    #2.4 treatment effect size 0.08 sd
+  beta5=0.25 #Social Distance
+  sds[5]=0.1
+  beta6=2.4 #Thermometer
+  sds[6]=0.08
+  
+
+```
+
+## Generate simulations
+
+One potential complication in our power calculations (that makes using "off the shelf" solutions difficult) is that we must consider the overall number of subjects as well as the "usable" number of subjects," since our main registered hypotheses are for White subjects (and some proportion of respondents recruited will not be White). The code below takes this into account in the following way:
+
+Because we'd like to account for the probabilistic aspects of 1) receiving respondents who are not all White Americans (for which our main registered hypotheses are on) and 2) whether they are randomized to see an outgroup image (as the platform does not allow for sampling conditional on race), we simulate 10,000 experiments for each N size with a generated set of data in each simulation and estimate the 6 tests (with registered Benjamini and Hochberg MH adjustments) and store. From here we can find how often, under each N scenario, the 6 treatment effects are able to be recovered --- the level of power. We aim for a power level above 0.95.
+
+```{r study1, eval=FALSE, warning=FALSE, message=FALSE}
+# Data holders: p-values and means
+set.seed(123)
+c.main1 <- c.main2 <- c.main3 <- c.main4 <- c.main5 <- c.main6 <- rep(NA, sims)
+p.main1 <- p.main2 <- p.main3 <- p.main4 <- p.main5 <- p.main6 <- rep(NA, sims)
+obs1 <- obs2 <- rep(NA, sims)
+#set up parallel cores ii 191-195
+no_clusters<-detectCores()-2
+if (Sys.getenv("RSTUDIO") == "1" && !nzchar(Sys.getenv("RSTUDIO_TERM")) && 
+    Sys.info()["sysname"] == "Darwin" && getRversion() >= "4.0.0") {
+  parallel:::setDefaultClusterOptions(setup_strategy = "sequential")
+}
+clust <- parallel::makeCluster(no_clusters)
+registerDoParallel(clust)
+t<-Sys.time()
+mydata<-vector("list",nrow(scenarios))
+#### Outer loop to vary the overall number of subjects ####
+dat <- foreach(j=1:nrow(scenarios), .combine=rbind,.packages = c("lmtest")) %dopar% {
+  N <- scenarios$N[j]
+  for (i in 1:sims){#inner loop
+    ### (I) ### 
+    # Generate Respondent Race, Treatment/Image, Respondent ID
+    RespondentRace<-sample(c("Black","White","Other"),N,prob=c(prop_black
+                    , prop_white,(100-prop_black-prop_white)), replace=TRUE)
+    Treatment<- sample(c(rep("Peer Praise",N*0.4),rep("Control",N*0.4),rep("Placebo",N*0.2))
+                       ,N,replace=F)
+    ID<-1:N
+    Image_name<-sample(c("Black", "Hispanic", "White"),N,prob=c(0.45, 0.45, 0.1),replace=T)
+    ImageBH<-ifelse(Image_name=="White","Ingroup","Outgroup")
+    
+    #Bind the X data
+    X<-data.frame(ID=ID,RespondentRace=RespondentRace,Treatment=as.factor(Treatment),
+                  ImageBH=as.factor(ImageBH),Image_name=as.factor(Image_name))
+    X$ControlvPraise<-ifelse(X$Treatment=="Control",0,ifelse(X$Treatment=="Peer Praise",1,NA))
+    
+    X <- within(X, ImageBH <- relevel(ImageBH, ref = "Ingroup"))
+    X <- within(X,Treatment <- relevel(Treatment, ref="Peer Praise"))
+    #Powered hypotheses on White resp, without Placebo
+    d <- subset(X, RespondentRace=="White"&Treatment!="Placebo") 
+    
+    ### (II) ### 
+    # Generate Ys
+    n_d<-nrow(d)
+  d$Y1 = beta1*d$ControlvPraise+ rnorm(n_d,0,sds[1]) #H1
+  d$Y2 = beta2*d$ControlvPraise+ rnorm(n_d,0,sds[2]) #H2
+  d$Y3a = beta3*d$ControlvPraise+ rnorm(n_d,0,sds[3]) #H3 Donation
+  d$Y3b = beta4*d$ControlvPraise+ rnorm(n_d,0,sds[4]) #H3 Letter
+  
+  d$Y4a = beta5*d$ControlvPraise+ rnorm(n_d,0,sds[5]) #H4 SD
+  d$Y4b = beta6*d$ControlvPraise+ rnorm(n_d,0,sds[6]) #H4 Thermometer
+  
+  #Wave 2 long-run
+  d$Y5 = 0.75*beta1*d$ControlvPraise+ rnorm(n_d,0,sds[1]) #H5
+  d$Y6a = 0.75*beta5*d$ControlvPraise+ rnorm(n_d,0,sds[5]) #H6 SD
+  d$Y6b = 0.75*beta6*d$ControlvPraise+ rnorm(n_d,0,sds[6]) #H6 Thermometer
+  
+    #Create Indexed values
+  d$Y3<-scale_values(d$Y3a)+scale_values(d$Y3b)
+  d$Y4<-scale_values(d$Y4a)+scale_values(d$Y4b)
+  d$Y6<-scale_values(d$Y6a)+scale_values(d$Y6b)
+  dout <- subset(d,ImageBH=="Outgroup")
+  #attrition for wave 2: half
+  set.seed(i)
+  d2<-d[sample(nrow(d),nrow(d)/2),]
+  d2out<-subset(d2,ImageBH=="Outgroup")
+    ### (III) ### 
+    ## Estimate models: H1-H6
+    main1 <- lm(formula = Y1 ~ ControlvPraise, data = dout)
+    main2 <- lm(formula = Y2 ~ ControlvPraise, data = d)
+    main3 <- lm(formula = Y3 ~ ControlvPraise, data = d)
+    main4 <- lm(formula = Y4 ~ ControlvPraise, data = d)
+    main5 <- lm(formula = Y5 ~ ControlvPraise, data = d2out)
+    main6 <- lm(formula = Y6 ~ ControlvPraise, data = d2)
+    
+    ### (IV) ### 
+    ## Store coefficients & Benjamini-Hochberg adjusted pvals
+    obs1[i] <- nrow(model.frame(main2)) #obs for most DVs
+    obs2[i] <- nrow(model.frame(main1)) #obs for behavioral empathy task
+    c.main1[i] <- coef(main1)[2] #H1
+    p.main1[i] <- p.adjust(summary(main1)$coefficients[2,4],"BH",n=n.hyp)
+    c.main2[i] <- coef(main2)[2] #H2
+    p.main2[i] <- p.adjust(summary(main2)$coefficients[2,4],"BH",n=n.hyp)
+    c.main3[i] <- coef(main3)[2] #H3
+    p.main3[i] <- p.adjust(summary(main3)$coefficients[2,4],"BH",n=n.hyp)
+    c.main4[i] <- coef(main4)[2] #H4
+    p.main4[i] <- p.adjust(summary(main4)$coefficients[2,4],"BH",n=n.hyp)
+    c.main5[i] <- coef(main5)[2] #H5
+    p.main5[i] <- p.adjust(summary(main5)$coefficients[2,4],"BH",n=n.hyp)
+    c.main6[i] <- coef(main6)[2] #H6
+    p.main6[i] <- p.adjust(summary(main6)$coefficients[2,4],"BH",n=n.hyp)
+  }
+  ## Collect power info
+  powerAll<- mean(abs(c.main1)>0.0 & p.main1<alpha 
+                  &abs(c.main2)>0.0 & p.main2<alpha 
+                  &  abs(c.main3)>0.0 & p.main3<alpha 
+                  & abs(c.main4)>0.0 & p.main4<alpha 
+                  & abs(c.main5)>0.0 & p.main5<alpha 
+                  &  abs(c.main6)>0.0 & p.main6<alpha
+                  )
+  ## Collect remaining obs
+  Obs1 <- mean(obs1)
+  Obs2 <- mean(obs2)
+  data.frame(Obs1=Obs1,Obs2=Obs2,powerAll=powerAll)
+}
+stopCluster(clust)
+print(Sys.time()-t)
+
+dat<-cbind(scenarios,dat)
+
+
+
+#update pay based on calcs for function obs: 
+#for each N, control/peer praise will be followed up in Wave 2 at higher wage per hour 
+#(for a much shorter survey, we pay the same as the first survey $2+1bonus)
+dat$pay_updated<-dat$pay + (dat$N*0.8)*0.5*3 #N * in Control/Peer Praise arms * attrition * pay
+
+saveRDS(dat,file=here::here("power_v5.rds"))
+```
+
+
+
+## Plots
+
+```{r study1plots ,eval=TRUE,warning=FALSE,message=FALSE}
+dat<-readRDS(file=here::here("power_v5.rds"))
+
+#power 
+plot1<- ggplot(data=dat,aes(x=N,y=powerAll))+
+  geom_point(alpha=1)+
+  labs(x="n size required",y="Power") + ylim(0.25,1) +
+  theme_bw()+
+  geom_smooth(se = FALSE, method = "loess", color="navy")+
+  geom_hline(yintercept=0.95,linetype="dashed",color = "tomato2", linewidth=1) +
+  ggtitle("Power calculations: Peer praise on Outgroup Inclusion")
+plot1
+ggsave(plot1,file=here::here("Figures","power v5.pdf"), width=8, height=7)
+
+```
+
+Required N size for Main Study powered at 0.95 is N=5,300.
+
+
+
+# Co-Partisan Peer Praise Study
+
+Co-partisan peer praise effect on inclusion towards racial/ethnic outgroups. We also consider the same set up as the above but utilize praise from co-partisan peers on MTurk for our parallel "Co-Partisan Peer Praise"; that is we design and field a separate study that looks at the effects of peer praise (from peers who share partisan identity with the respondent) on inclusion towards racial/ethnic outgroups. Again, we have the same four outcomes, though this time, we generate peer praise such that each time a respondent is randomized to receive treatment, they receive praise from a co-partisan group of peers (e.g. a respondent who self-identifies as Republican receives peer praise from a group of Republican peers). We are interested in whether co-partisan peer praise changes each of our four outcomes (H7-H10).
+
+Thus, Co-Partisan Peer Praise Study is about Co-Partisan Effect of Peer Praise. Is Co-Partisan Peer Praise able to change respondent inclusion to racial/ethnic outgroups? 
+
+* **H7 DV Behavioral Empathy Task**: the effect of the treatment (co-partisan praise) on the behavioral empathy task (choosing the FEEL task), when target is an outgroup member.
+
+* **H8 DV Self-reported Empathy**:  the effect of treatment (co-partisan praise) on the outcome (reporting feeling empathy for racial/ethnic outgroups), when target is an outgroup member.
+
+* **H9 DV Political Inclusion**: the effect of treatment (co-partisan praise) on the political inclusion index (donate bonus amount + writing letter, equally weighted in Index of 0-2), when target is an outgroup member.
+
+* **H10 DV Attitudes**: the effect of treatment (co-partisan praise) on the attitudinal index outcome (social distance + thermometer rating, equally weighted into an Index of 0-2), when target is an outgroup member.
+
+
+##  Assumptions
+
+As it's unclear whether co-partisan identity creates a peer praise effect that is stronger or weaker compared to peer praise from a general peer, we make the same assumptions of peer praise effect sizes as before for the four tests H7-H10 tests (effect of co-partisan peer praise).
+
+```{r study2assumptions, eval=TRUE}
+set.seed(456)
+# n sizes we simulate through
+possible.ns <- c(seq(from=3000, to=5000, by=100))
+scenarios<-data.frame(N=possible.ns)
+# we calculate time to take study and pay
+scenarios$time<-8
+scenarios$pay<-(((scenarios$time/60)*15)+1)*scenarios$N 
+# alpha level, sims set, number of hypotheses to adjust:
+alpha <- 0.05
+sims <- 10000
+n.hyp = 4
+
+# Population assumptions for respondents 
+# based on prior proportions in pilots
+  prop_white<-66
+  prop_black<-15
+  prop_dem<-48.7 #from all MTurk Pilots
+  prop_rep<-32.9 
+
+  
+# Effects:
+  sds<-rep(NA,6)
+  beta1=0.17 #h7 behavioral empathy
+  sds[1]=0.47
+  beta2=0.171 #h8 self-reported empathy
+  sds[2]=1
+  beta3=0.1 #h9a - donation
+  sds[3]=0.06
+  beta4=0.142 #h9b - letter 
+  sds[4]=.02*sqrt(1800)
+  beta5=0.25 #h10a - social distance
+  sds[5]=0.1
+  beta6=2.4 #h10b - thermometer
+  sds[6]=0.08
+```
+
+## Generate simulations
+
+One potential complication in our power calculations (that makes using "off the shelf" solutions difficult) is that we must consider the overall number of subjects as well as the "usable" number of subjects," since our main registered hypotheses are for White subjects (and some proportion of respondents recruited will not be White). The code below takes this into account in the following way:
+
+Because we'd like to account for the probabilistic aspects of 1) receiving respondents who are not all White Americans (for which our main registered hypotheses are on) and 2) whether they are randomized to see an outgroup image (as the platform does not allow for sampling conditional on race), we simulate 10,000 experiments for each N size with a generated set of data in each simulation and estimate the 4 tests (with registered Benjamini and Hochberg MH adjustments) and store. From here we can find how often, under each N scenario, the 4 treatment effects are able to be recovered --- the level of power. We aim for a power level above 0.95.
+
+```{r study2, eval=FALSE, warning=FALSE, message=FALSE}
+# Data holders: p-values and means
+set.seed(456)
+c.main1 <- c.main2 <- c.main3 <- c.main4 <- rep(NA, sims)
+p.main1 <- p.main2 <- p.main3 <- p.main4 <- rep(NA, sims)
+obs1 <- obs2 <- rep(NA, sims)
+#set up parallel cores
+no_clusters<-detectCores()-2
+if (Sys.getenv("RSTUDIO") == "1" && !nzchar(Sys.getenv("RSTUDIO_TERM")) && 
+    Sys.info()["sysname"] == "Darwin" && getRversion() >= "4.0.0") {
+  parallel:::setDefaultClusterOptions(setup_strategy = "sequential")
+}
+clust <- parallel::makeCluster(no_clusters)
+registerDoParallel(clust)
+t<-Sys.time()
+mydata<-vector("list",nrow(scenarios))
+#### Outer loop to vary the overall number of subjects ####
+dat <- foreach(j=1:nrow(scenarios), .combine=rbind,.packages = c("lmtest")) %dopar% {
+  N <- scenarios$N[j]
+  for (i in 1:sims){#inner loop
+    ### (I) ### 
+    # Generate Respondent Race, Party, Treatment/Image, Respondent ID
+    RespondentRace<-sample(c("Black","White","Other"),N,prob=c(prop_black
+                    , prop_white,(100-prop_black-prop_white)), replace=TRUE)
+    RespondentParty<-sample(c("Republican","Democrat","Other"),N,prob=c(prop_rep
+                    , prop_dem,(100-prop_rep-prop_dem)), replace=TRUE)
+    Treatment<- sample(c(rep("Co-Partisan Peer Praise",N*0.5),rep("Control",N*0.5)),N,replace=F)
+    ID<-1:N
+    Image_name<-sample(c("Black", "Hispanic", "White"),N,prob=c(0.45, 0.45, 0.1),replace=T)
+    ImageBH<-ifelse(Image_name=="White","Ingroup","Outgroup") #subsetting to white later
+    
+    #Bind the X data
+    X<-data.frame(ID=ID,RespondentRace=RespondentRace,RespondentParty=RespondentParty
+                  ,Treatment=as.factor(Treatment),ImageBH=as.factor(ImageBH)
+                  ,Image_name=as.factor(Image_name))
+    X$ControlvPraise<-ifelse(X$Treatment=="Control",0
+                             ,ifelse(X$Treatment=="Co-Partisan Peer Praise",1,NA))
+    X <- within(X, ImageBH <- relevel(ImageBH, ref = "Ingroup"))
+    X <- within(X,Treatment <- relevel(Treatment, ref="Co-Partisan Peer Praise"))
+    d <-subset(X,RespondentRace=="White"&RespondentParty!="Other")
+    dout<-subset(d,ImageBH=="Outgroup")
+    ### (II) ### 
+    # Generate Ys
+    n_dout<-nrow(dout)
+    n_d<-nrow(d)
+  d$Y1 = beta1*d$ControlvPraise + rnorm(n_d,0,sds[1]) #H7
+  d$Y2 = beta2*d$ControlvPraise + rnorm(n_d,0,sds[2]) #H8
+  d$Y3a = beta3*d$ControlvPraise + rnorm(n_d,0,sds[3]) #H9a Donation
+  d$Y3b = beta4*d$ControlvPraise + rnorm(n_d,0,sds[4]) #H9b Letter
+  d$Y4a = beta5*d$ControlvPraise + rnorm(n_d,0,sds[5]) #H10a
+  d$Y4b = beta6*d$ControlvPraise + rnorm(n_d,0,sds[6]) #H10b
+
+    #Create Indexed values
+  d$Y3<-scale_values(d$Y3a)+scale_values(d$Y3b)
+  d$Y4<-scale_values(d$Y4a)+scale_values(d$Y4b)
+  dout <- subset(d,ImageBH=="Outgroup")
+    
+    ### (III) ### 
+    ## Estimate models: H7-H10
+    main1 <- lm(formula = Y1 ~ ControlvPraise , data = dout)
+    main2 <- lm(formula = Y2 ~ ControlvPraise , data = d)
+    main3 <- lm(formula = Y3 ~ ControlvPraise , data = d)
+    main4 <- lm(formula = Y4 ~ ControlvPraise , data = d)
+    
+    ### (IV) ### 
+    ## Store coefficients & Benjamini-Hochberg adjusted pvals
+    obs1[i] <- nrow(model.frame(main2)) #obs for most DVs
+    obs2[i] <- nrow(model.frame(main1)) #obs for behavioral empathy task
+    c.main1[i] <- coef(main1)[2] #H7
+    p.main1[i] <- p.adjust(summary(main1)$coefficients[2,4],"BH",n=n.hyp)
+    c.main2[i] <- coef(main2)[2] #H8
+    p.main2[i] <- p.adjust(summary(main2)$coefficients[2,4],"BH",n=n.hyp)
+    c.main3[i] <- coef(main3)[2] #H9
+    p.main3[i] <- p.adjust(summary(main3)$coefficients[2,4],"BH",n=n.hyp)
+    c.main4[i] <- coef(main4)[2] #H10
+    p.main4[i] <- p.adjust(summary(main4)$coefficients[2,4],"BH",n=n.hyp)
+  }
+  ## Collect power info
+  powerAll<- mean(abs(c.main1)>0.0 & p.main1<alpha 
+                  &  abs(c.main2)>0.0 & p.main2<alpha 
+                  &  abs(c.main3)>0.0 & p.main3<alpha 
+                  & abs(c.main4)>0.0 & p.main4<alpha 
+                  )
+  ## Collect remaining obs
+  Obs1 <- mean(obs1)
+  Obs2 <- mean(obs2)
+  data.frame(Obs1=Obs1,Obs2=Obs2,powerAll=powerAll)
+}
+stopCluster(clust)
+print(Sys.time()-t)
+
+dat<-cbind(scenarios,dat)
+
+saveRDS(dat,file=here::here("power_v5 study2.rds"))
+```
+
+## Plots
+
+```{r study2plots ,eval=TRUE,warning=FALSE,message=FALSE}
+dat<-readRDS(file=here::here("power_v5 study2.rds"))
+
+#power 
+plot1<- ggplot(data=dat,aes(x=N,y=powerAll))+
+  geom_point(alpha=1)+
+  labs(x="n size required",y="Power") + ylim(0.5,1) +
+  theme_bw()+
+  geom_smooth(se = FALSE, method = "loess", color="navy")+
+  geom_hline(yintercept=0.95,linetype="dashed",color = "tomato2", linewidth=1) +
+  ggtitle("Power calculations: Co-partisan peer praise on Outgroup Inclusion")
+plot1
+ggsave(plot1,file=here::here("Figures","power v5 study2.pdf"), width=8, height=7)
+
+```
+
+Required N size for Co-Partisan Peer Praise Study powered at 0.95 is N=4,400.
