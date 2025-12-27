@@ -1,6 +1,7 @@
 # Praise and Empathy
 
-Replication files and materials for **"Can praise from peers promote empathy and inclusive behavior towards racial or ethnic outgroups?"** by Adeline Lo, Jonathan Renshon & Lotem Bassan-Nygate. Stage 1 AIP figshare: https://springernature.figshare.com/articles/journal_contribution/Can_praise_from_peers_promote_empathy_and_political_inclusion_towards_racial_or_ethnic_outgroups_Registered_Report_Stage_1_Protocol_/28715198?file=53375999
+Replication files and materials for **"The effect of praise from peers on empathy and political
+inclusion towards racial or ethnic outgroups"** by Adeline Lo, Jonathan Renshon & Lotem Bassan-Nygate. Stage 1 AIP figshare: https://springernature.figshare.com/articles/journal_contribution/Can_praise_from_peers_promote_empathy_and_political_inclusion_towards_racial_or_ethnic_outgroups_Registered_Report_Stage_1_Protocol_/28715198?file=53375999
 
 To run analyses make sure you're in the Rproj `Analysis.Rproj` --- file directories are set through the Rproj perspective.
 ## Files
@@ -15,6 +16,7 @@ Includes all necessary code to replicate analyses.
 
 * Analysis file for pilot studies (Stage 1) `Across pilot study v2.Rmd`
 * Analysis file for main studies (Stage 2) `NHB Analysis.Rmd`
+* Registered power calculations `Power-calculations-Nature-RR-clean-v6.Rmd`
 * R functions `R_fns.R`
 
 ## Figures folder
