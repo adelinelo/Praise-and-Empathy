@@ -16,6 +16,7 @@ Includes all necessary code to replicate analyses.
 
 * Analysis file for pilot studies (Stage 1) `Across pilot study v2.Rmd`
 * Analysis file for main studies (Stage 2) `NHB Analysis.Rmd`
+* Registered power calculations `Power-calculations-Nature-RR-clean-v6.Rmd`
 * R functions `R_fns.R`
 
 ## Figures folder
